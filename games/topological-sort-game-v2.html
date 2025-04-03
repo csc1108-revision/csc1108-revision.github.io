@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Topological Sort Game + DFS Answer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* --- Base Game Styles --- */
+        .node {
+            cursor: pointer;
+            transition: fill 0.3s ease, stroke 0.3s ease, opacity 0.3s ease;
+            stroke-width: 1; /* Default stroke width */
+        }
+        .node-text {
+            font-family: 'Inter', sans-serif;
+            font-size: 12px; /* Slightly smaller for potentially more nodes */
+            fill: black; /* Black text for better contrast on lighter colors */
+            text-anchor: middle;
+            dominant-baseline: central;
+            pointer-events: none;
+        }
+        .edge {
+            stroke: #6b7280; /* gray-500 */
+            stroke-width: 2;
+            marker-end: url(#arrow);
+            transition: opacity 0.5s ease, stroke 0.5s ease;
+        }
+        .clickable {
+             fill: #60a5fa; /* blue-400 */
+             stroke: #2563eb; /* blue-600 */
+             /* White text for clickable */
+             & + .node-text { fill: white; }
+        }
+        .clickable:hover {
+             fill: #3b82f6; /* blue-500 */
+        }
+        .selected {
+            fill: #d1d5db; /* gray-300 */
+            opacity: 0.7;
+            cursor: default;
+            stroke: #9ca3af; /* gray-400 */
+            /* Black text for selected */
+             & + .node-text { fill: #1f2937; } /* gray-800 */
+        }
+        .incorrect-shake {
+            animation: shake 0.5s;
+        }
+        @keyframes shake {
+            0% { transform: translateX(0); } 25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); } 75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+
+        /* --- DFS Visualization Styles --- */
+        .edge-dfs-path {
+             stroke: #f97316; /* orange-600 */
+             stroke-width: 3;
+        }
+        /* Node states for DFS */
+        .unvisited-dfs { fill: #e5e7eb; stroke: #9ca3af; } /* gray-200 / gray-400 */
+        .visiting-dfs { fill: #fdba74; stroke: #f97316; stroke-width: 2; } /* orange-300 / orange-600 */
+        .visited-dfs { fill: #a7f3d0; stroke: #059669; stroke-width: 2; } /* emerald-200 / emerald-600 */
+        .current-dfs { stroke: #c2410c; stroke-width: 3px !important; } /* orange-800, thicker stroke */
+        /* Ensure DFS state text is readable */
+        .unvisited-dfs + .node-text, .visiting-dfs + .node-text, .visited-dfs + .node-text {
+            fill: #1f2937; /* gray-800 */
+        }
+
+
+        /* --- Layout & General --- */
+        svg {
+            width: 100%;
+            height: auto;
+            max-height: 400px; /* Adjusted height */
+            border: 1px solid #e5e7eb; /* gray-200 */
+            border-radius: 0.5rem; /* rounded-lg */
+            background-color: #f9fafb; /* gray-50 */
+        }
+        body {
+             font-family: 'Inter', sans-serif;
+        }
+         .explanation-box {
+            min-height: 40px;
+            background-color: #f3f4f6; /* gray-100 */
+            border: 1px solid #e5e7eb; /* gray-200 */
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem; /* rounded-md */
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+            line-height: 1.3;
+            color: #4b5563; /* gray-600 */
+            text-align: center;
+        }
+         .list-box {
+            min-height: 30px;
+            background-color: #eff6ff; /* blue-50 */
+            border: 1px solid #bfdbfe; /* blue-200 */
+            padding: 0.4rem 0.6rem;
+            border-radius: 0.375rem; /* rounded-md */
+            margin-bottom: 0.5rem;
+            font-family: monospace;
+            font-size: 0.85rem;
+         }
+         .controls button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background-color: #9ca3af; /* gray-400 */
+         }
+    </style>
+</head>
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="bg-white p-6 rounded-lg shadow-md w-full max-w-3xl">
+        <h1 class="text-xl font-bold text-center text-gray-800 mb-2">Topological Sort Game</h1>
+        <p class="text-center text-sm text-gray-600 mb-3">Click nodes with no incoming dependencies. Or click "Show Answer" for a DFS-based solution.</p>
+
+        <div id="graph-container" class="mb-3">
+            <svg id="graph-svg" viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5"
+                        markerWidth="4" markerHeight="4"
+                        orient="auto-start-reverse">
+                      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6b7280" />
+                    </marker>
+                    </defs>
+                <g id="edges-group"></g>
+                <g id="nodes-group"></g>
+            </svg>
+        </div>
+
+        <div class="list-box">
+            <span class="font-semibold text-blue-800">Your Sort:</span>
+            <span id="user-sort" class="ml-2 text-blue-700"></span>
+        </div>
+
+        <div class="list-box bg-emerald-50 border-emerald-200">
+            <span class="font-semibold text-emerald-800">DFS Post-Order (Built):</span>
+            <span id="dfs-post-order-list" class="ml-2 text-emerald-700"></span>
+        </div>
+         <div class="list-box bg-emerald-50 border-emerald-200">
+            <span class="font-semibold text-emerald-800">DFS Final Sort:</span>
+            <span id="dfs-final-sort-list" class="ml-2 text-emerald-700"></span>
+        </div>
+
+        <div id="message-area" class="explanation-box">
+            Select a node to begin.
+        </div>
+
+        <div class="controls flex justify-center space-x-3 mt-3">
+            <button id="reset-button" class="px-3 py-1.5 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition duration-200">Reset Game</button>
+            <button id="new-graph-button" class="px-3 py-1.5 text-sm bg-purple-500 text-white rounded-md hover:bg-purple-600 transition duration-200">New Graph</button>
+            <button id="show-answer-button" class="px-3 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition duration-200">Show Answer (DFS)</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Game Configuration ---
+        const NODE_RADIUS = 18; // Slightly smaller radius
+        const DFS_STEP_DELAY = 700; // Milliseconds between DFS steps
+        const GRAPH_EXAMPLES = [ /* Using the same examples */
+             // Example 1
+            { nodes: {'A':{id:'A',x:50,y:200},'B':{id:'B',x:200,y:100},'C':{id:'C',x:200,y:300},'D':{id:'D',x:350,y:100},'E':{id:'E',x:350,y:300},'F':{id:'F',x:500,y:200}}, edges: [['A','B'],['A','C'],['B','D'],['C','E'],['D','F'],['E','F']] },
+            // Example 2
+            { nodes: {'1':{id:'1',x:50,y:50},'2':{id:'2',x:50,y:150},'3':{id:'3',x:200,y:100},'4':{id:'4',x:200,y:250},'5':{id:'5',x:350,y:175},'6':{id:'6',x:500,y:100},'7':{id:'7',x:500,y:250}}, edges: [['1','3'],['2','3'],['2','4'],['3','5'],['4','5'],['5','6'],['5','7']] },
+            // Example 3
+            { nodes: {'P1':{id:'P1',x:50,y:100},'P2':{id:'P2',x:50,y:250},'P3':{id:'P3',x:200,y:175},'P4':{id:'P4',x:350,y:100},'P5':{id:'P5',x:350,y:250},'P6':{id:'P6',x:500,y:175}}, edges: [['P1','P3'],['P2','P3'],['P3','P4'],['P3','P5'],['P4','P6'],['P5','P6']] },
+            // Example 4
+            { nodes: {'Start':{id:'Start',x:50,y:200},'Mid1':{id:'Mid1',x:180,y:200},'Mid2':{id:'Mid2',x:310,y:200},'Branch':{id:'Branch',x:440,y:100},'End':{id:'End',x:440,y:300},'Final':{id:'Final',x:550,y:200}}, edges: [['Start','Mid1'],['Mid1','Mid2'],['Mid2','Branch'],['Mid2','End'],['Branch','Final'],['End','Final']] }
+        ];
+
+        // --- DOM Elements ---
+        const svg = document.getElementById('graph-svg');
+        const nodesGroup = document.getElementById('nodes-group');
+        const edgesGroup = document.getElementById('edges-group');
+        const userSortSpan = document.getElementById('user-sort');
+        const messageArea = document.getElementById('message-area');
+        const resetButton = document.getElementById('reset-button');
+        const newGraphButton = document.getElementById('new-graph-button');
+        const showAnswerButton = document.getElementById('show-answer-button');
+        const dfsPostOrderSpan = document.getElementById('dfs-post-order-list');
+        const dfsFinalSortSpan = document.getElementById('dfs-final-sort-list');
+        const svgNS = "http://www.w3.org/2000/svg";
+
+        // --- Game State ---
+        let currentGraphIndex = 0;
+        let nodes = {}; // Stores node objects { id, x, y, element, textElement, state }
+        let edges = []; // Stores edge objects { from, to, element }
+        let adjacencyList = {}; // { nodeId: [neighborId1, neighborId2, ...] }
+        let inDegree = {}; // { nodeId: count } - Tracks *current* in-degree for gameplay
+        let userSequence = []; // Stores the sequence of nodes picked by the user
+        let remainingNodes = new Set(); // Set of node IDs not yet picked for gameplay
+        let isGameActive = true; // Flag to control user interaction
+
+        // --- DFS Visualization State ---
+        let dfsVisitedStates = {}; // 0: unvisited, 1: visiting, 2: visited (for DFS viz)
+        let dfsPostOrderResult = [];
+        let dfsStepIterator = null;
+        let dfsTimeoutId = null; // To cancel automatic stepping
+        let isDfsRunning = false;
+
+        // --- Game Logic Functions --- (Mostly unchanged from previous game version)
+
+        function calculateInitialInDegrees() {
+            const initialInDegree = {};
+            for (const nodeId in nodes) {
+                initialInDegree[nodeId] = 0;
+            }
+            edges.forEach(edge => {
+                if (initialInDegree.hasOwnProperty(edge.to)) {
+                    initialInDegree[edge.to]++;
+                }
+            });
+            // Initialize the dynamic inDegree count for the start of the game
+            inDegree = { ...initialInDegree };
+        }
+
+        function buildAdjacencyList() {
+            adjacencyList = {};
+            for (const nodeId in nodes) {
+                adjacencyList[nodeId] = [];
+            }
+            edges.forEach(edge => {
+                if (adjacencyList.hasOwnProperty(edge.from)) {
+                    adjacencyList[edge.from].push(edge.to);
+                }
+            });
+        }
+
+        function drawNode(nodeData) {
+            const group = document.createElementNS(svgNS, 'g');
+            group.setAttribute('id', `node-group-${nodeData.id}`);
+            group.addEventListener('click', () => handleNodeClick(nodeData.id));
+
+            const circle = document.createElementNS(svgNS, 'circle');
+            circle.setAttribute('cx', nodeData.x);
+            circle.setAttribute('cy', nodeData.y);
+            circle.setAttribute('r', NODE_RADIUS);
+            circle.setAttribute('class', 'node'); // Base class
+            circle.setAttribute('id', `node-${nodeData.id}`);
+
+            const text = document.createElementNS(svgNS, 'text');
+            text.setAttribute('x', nodeData.x);
+            text.setAttribute('y', nodeData.y);
+            text.setAttribute('class', 'node-text');
+            text.textContent = nodeData.id;
+
+            group.appendChild(circle);
+            group.appendChild(text);
+            nodesGroup.appendChild(group);
+            nodes[nodeData.id] = { ...nodeData, element: circle, textElement: text, state: 'initial' };
+        }
+
+        function drawEdge(fromId, toId) {
+            const fromNode = nodes[fromId];
+            const toNode = nodes[toId];
+            if (!fromNode || !toNode) return;
+
+            const line = document.createElementNS(svgNS, 'line');
+            const angle = Math.atan2(toNode.y - fromNode.y, toNode.x - fromNode.x);
+            const startX = fromNode.x + NODE_RADIUS * Math.cos(angle);
+            const startY = fromNode.y + NODE_RADIUS * Math.sin(angle);
+            const endX = toNode.x - (NODE_RADIUS + 6) * Math.cos(angle); // Arrow spacing
+            const endY = toNode.y - (NODE_RADIUS + 6) * Math.sin(angle);
+
+            line.setAttribute('x1', startX);
+            line.setAttribute('y1', startY);
+            line.setAttribute('x2', endX);
+            line.setAttribute('y2', endY);
+            line.setAttribute('class', 'edge');
+            line.setAttribute('id', `edge-${fromId}-${toId}`);
+            edgesGroup.appendChild(line);
+             // Store edge reference only once
+             if (!edges.find(e => e.from === fromId && e.to === toId)) {
+                 edges.push({ from: fromId, to: toId, element: line });
+             }
+        }
+
+        function updateGameNodeStates() {
+             if (isDfsRunning) return; // Don't update game styles during DFS
+            for (const nodeId in nodes) {
+                const node = nodes[nodeId];
+                // Reset DFS styles first
+                node.element.classList.remove('unvisited-dfs', 'visiting-dfs', 'visited-dfs', 'current-dfs');
+                node.element.style.strokeWidth = null; // Reset stroke width override
+
+                if (userSequence.includes(nodeId)) {
+                    node.element.setAttribute('class', 'node selected');
+                    node.state = 'selected';
+                } else if (remainingNodes.has(nodeId)) {
+                    node.element.setAttribute('class', 'node clickable');
+                    node.state = 'clickable';
+                } else {
+                     node.element.setAttribute('class', 'node'); // Should not happen in normal play
+                     node.state = 'initial';
+                }
+            }
+             // Reset edge styles
+             edges.forEach(edge => {
+                 edge.element.classList.remove('edge-dfs-path');
+                 edge.element.style.stroke = null; // Reset potential DFS color override
+                 // Restore opacity based on game state
+                 const fromNodeSelected = userSequence.includes(edge.from);
+                 edge.element.style.opacity = fromNodeSelected ? '0.2' : '1';
+             });
+        }
+
+        function handleNodeClick(nodeId) {
+            if (!isGameActive || isDfsRunning) return; // Ignore clicks if game/DFS inactive/running
+
+            const node = nodes[nodeId];
+            if (!node || !remainingNodes.has(nodeId) || userSequence.includes(nodeId)) {
+                return;
+            }
+
+            if (inDegree[nodeId] === 0) {
+                // Correct choice
+                userSequence.push(nodeId);
+                remainingNodes.delete(nodeId);
+                updateUserSortDisplay();
+                showMessage('Correct!', 'success');
+
+                if (adjacencyList[nodeId]) {
+                    adjacencyList[nodeId].forEach(neighborId => {
+                        if (remainingNodes.has(neighborId)) {
+                            inDegree[neighborId]--;
+                            // Fade out the edge visually immediately
+                            const edgeElement = document.getElementById(`edge-${nodeId}-${neighborId}`);
+                            if(edgeElement) edgeElement.style.opacity = '0.2';
+                        }
+                    });
+                }
+                updateGameNodeStates(); // Update styles for game state
+
+                if (remainingNodes.size === 0) {
+                    showMessage('Congratulations! You found a valid topological sort!', 'win');
+                    isGameActive = false; // Stop game on win
+                    showAnswerButton.disabled = true; // Disable show answer on win
+                }
+            } else {
+                // Incorrect choice
+                showMessage(`Incorrect! Node ${nodeId} still has ${inDegree[nodeId]} incoming dependencies.`, 'error');
+                node.element.classList.add('incorrect-shake');
+                setTimeout(() => node.element.classList.remove('incorrect-shake'), 500);
+            }
+        }
+
+        function updateUserSortDisplay() {
+            userSortSpan.textContent = userSequence.join(' -> ');
+        }
+
+        function showMessage(text, type = 'info') {
+             // Don't overwrite DFS messages if DFS is running, unless it's a final win/reset message
+            if (isDfsRunning && type !== 'win' && type !== 'reset') return;
+
+            messageArea.textContent = text;
+            messageArea.className = 'explanation-box '; // Reset classes, keep base
+            switch (type) {
+                case 'success': messageArea.classList.add('bg-green-100', 'text-green-700'); break;
+                case 'error': messageArea.classList.add('bg-red-100', 'text-red-700'); break;
+                case 'win': messageArea.classList.add('bg-yellow-100', 'text-yellow-800', 'font-semibold'); break;
+                case 'dfs': messageArea.classList.add('bg-orange-50', 'text-orange-700'); break; // For DFS steps
+                case 'reset':
+                case 'info':
+                default: messageArea.classList.add('bg-blue-100', 'text-blue-700'); break;
+            }
+            if (type === 'success' && isGameActive) { // Auto-clear success only during active play
+                setTimeout(() => {
+                    if (messageArea.textContent === text && isGameActive) {
+                         showMessage('Select the next node.', 'info');
+                    }
+                }, 1500);
+            }
+        }
+
+        function clearGraph() {
+            nodesGroup.innerHTML = '';
+            edgesGroup.innerHTML = '';
+            edges = [];
+            nodes = {}; // Clear node references
+        }
+
+        function loadGraph(graphData) {
+            stopDfsVisualization(); // Stop any running DFS
+            clearGraph();
+
+            // Reset game state variables
+            adjacencyList = {};
+            inDegree = {};
+            userSequence = [];
+            remainingNodes = new Set();
+            isGameActive = true; // Enable game
+
+            // Draw nodes
+            for (const nodeId in graphData.nodes) {
+                drawNode(graphData.nodes[nodeId]);
+                remainingNodes.add(nodeId);
+            }
+            // Draw edges AFTER nodes are defined
+            graphData.edges.forEach(([from, to]) => drawEdge(from, to));
+
+            buildAdjacencyList();
+            calculateInitialInDegrees();
+
+            // Initial UI update
+            updateGameNodeStates(); // Set initial game styles
+            updateUserSortDisplay();
+            dfsPostOrderSpan.textContent = ''; // Clear DFS results
+            dfsFinalSortSpan.textContent = '';
+            showMessage('Game started. Select a node with no incoming dependencies.', 'info');
+            // Enable buttons
+            resetButton.disabled = false;
+            newGraphButton.disabled = false;
+            showAnswerButton.disabled = false;
+        }
+
+        function resetGame() {
+            stopDfsVisualization();
+            console.log("Resetting game with graph index:", currentGraphIndex);
+            loadGraph(GRAPH_EXAMPLES[currentGraphIndex]);
+        }
+
+        function loadNewGraph() {
+            stopDfsVisualization();
+            currentGraphIndex = (currentGraphIndex + 1) % GRAPH_EXAMPLES.length;
+            console.log("Loading new graph with index:", currentGraphIndex);
+            loadGraph(GRAPH_EXAMPLES[currentGraphIndex]);
+        }
+
+
+        // --- DFS Visualization Logic ---
+
+        function* dfsVisitGenerator(nodeId) {
+            dfsVisitedStates[nodeId] = 1; // 1 = visiting
+            // No explicit stack visualization here, focus on node states/post-order
+            yield { type: 'visit', nodeId: nodeId, explanation: `DFS visiting node ${nodeId}. Mark as 'visiting'.` };
+
+            if (adjacencyList[nodeId]) {
+                for (const neighborId of adjacencyList[nodeId]) {
+                    yield { type: 'traverse_edge', from: nodeId, to: neighborId, explanation: `Checking neighbor ${neighborId} from ${nodeId}.` };
+                    if (dfsVisitedStates[neighborId] === 1) {
+                        yield { type: 'cycle', nodeId: neighborId, explanation: `Cycle detected involving ${neighborId}!` };
+                        return; // Stop on cycle
+                    }
+                    if (dfsVisitedStates[neighborId] === 0) {
+                        yield* dfsVisitGenerator(neighborId); // Recurse
+                    }
+                     yield { type: 'clear_edge', from: nodeId, to: neighborId, explanation: `Finished with neighbor ${neighborId}.` };
+                }
+            }
+
+            dfsVisitedStates[nodeId] = 2; // 2 = visited
+            dfsPostOrderResult.unshift(nodeId); // Build reversed post-order directly
+            yield {
+                type: 'finish',
+                nodeId: nodeId,
+                postOrder: [...dfsPostOrderResult].reverse(), // Show built list (reversed)
+                explanation: `Finished node ${nodeId}. Mark 'visited'. Add to post-order.`
+            };
+        }
+
+        function* generateDfsSteps() {
+            yield { type: 'start', explanation: "Starting DFS-based Topological Sort visualization..." };
+
+            // Initialize DFS state
+            dfsVisitedStates = {};
+            dfsPostOrderResult = [];
+            for (const nodeId in nodes) {
+                dfsVisitedStates[nodeId] = 0; // 0 = unvisited
+            }
+
+            // Iterate through all nodes to handle disconnected graphs
+            const nodeIds = Object.keys(nodes); // Or use a predefined start order if desired
+            for (const nodeId of nodeIds) {
+                if (dfsVisitedStates[nodeId] === 0) {
+                    yield { type: 'start_component', nodeId: nodeId, explanation: `Starting DFS from unvisited node ${nodeId}.` };
+                    yield* dfsVisitGenerator(nodeId);
+                }
+            }
+
+            yield {
+                type: 'complete',
+                postOrder: [...dfsPostOrderResult].reverse(),
+                finalSort: [...dfsPostOrderResult],
+                explanation: `DFS complete. Final sort: [${dfsPostOrderResult.join(', ')}]`
+            };
+        }
+
+        function updateDfsVisualization(step) {
+            messageArea.textContent = step.explanation;
+            messageArea.className = 'explanation-box bg-orange-50 text-orange-700'; // DFS style
+            dfsPostOrderSpan.textContent = step.postOrder ? step.postOrder.join(', ') : dfsPostOrderSpan.textContent;
+            dfsFinalSortSpan.textContent = step.finalSort ? step.finalSort.join(', ') : '';
+
+            // Reset previous highlights
+            Object.values(nodes).forEach(node => node.element.classList.remove('current-dfs'));
+            edges.forEach(edge => edge.element.classList.remove('edge-dfs-path'));
+
+            // Update node colors based on dfsVisitedStates
+            for (const nodeId in nodes) {
+                const node = nodes[nodeId];
+                let stateClass = 'unvisited-dfs';
+                if (dfsVisitedStates[nodeId] === 1) stateClass = 'visiting-dfs';
+                else if (dfsVisitedStates[nodeId] === 2) stateClass = 'visited-dfs';
+                // Apply base DFS class, removing game classes
+                node.element.setAttribute('class', `node ${stateClass}`);
+            }
+
+             // Apply step-specific highlights
+             switch (step.type) {
+                 case 'visit':
+                 case 'finish':
+                 case 'start_component':
+                     if (nodes[step.nodeId]) {
+                         nodes[step.nodeId].element.classList.add('current-dfs');
+                     }
+                     break;
+                 case 'traverse_edge':
+                     const edgeElement = document.getElementById(`edge-${step.from}-${step.to}`);
+                     if (edgeElement) edgeElement.classList.add('edge-dfs-path');
+                     if (nodes[step.from]) nodes[step.from].element.classList.add('current-dfs'); // Highlight source
+                     break;
+                 case 'clear_edge':
+                      if (nodes[step.from]) nodes[step.from].element.classList.add('current-dfs'); // Keep source highlighted
+                     break;
+                 case 'complete':
+                     isDfsRunning = false; // Mark DFS as finished
+                     // Keep final 'visited' styles on nodes
+                     resetButton.disabled = false; // Re-enable reset
+                     newGraphButton.disabled = false; // Re-enable new graph
+                     // Keep show answer disabled until reset
+                     break;
+                 case 'start': // Initial step
+                 case 'cycle': // Cycle detected
+                     // No specific element highlights needed beyond state colors
+                     break;
+             }
+        }
+
+         function stopDfsVisualization() {
+             if (dfsTimeoutId) {
+                 clearTimeout(dfsTimeoutId);
+                 dfsTimeoutId = null;
+             }
+             isDfsRunning = false;
+             // Don't reset styles here, let resetGame/loadGraph handle it
+         }
+
+
+        function startDfsAnswer() {
+            if (isDfsRunning) return; // Prevent starting multiple times
+
+            stopDfsVisualization(); // Clear any previous timeouts just in case
+            isDfsRunning = true;
+            isGameActive = false; // Disable game clicks
+
+            // Disable buttons during DFS
+            resetButton.disabled = true;
+            newGraphButton.disabled = true;
+            showAnswerButton.disabled = true;
+            userSortSpan.textContent = ''; // Clear user sort display
+
+            dfsStepIterator = generateDfsSteps();
+            dfsTimeoutId = setTimeout(runNextDfsStep, DFS_STEP_DELAY / 2); // Start quickly
+        }
+
+        function runNextDfsStep() {
+            if (!isDfsRunning || !dfsStepIterator) return;
+
+            const result = dfsStepIterator.next();
+            if (!result.done) {
+                updateDfsVisualization(result.value);
+                // Schedule the next step if DFS hasn't completed
+                 if (result.value.type !== 'complete' && result.value.type !== 'cycle') {
+                     dfsTimeoutId = setTimeout(runNextDfsStep, DFS_STEP_DELAY);
+                 } else {
+                     stopDfsVisualization(); // Stop timeouts on completion/cycle
+                      // Re-enable reset/new graph after completion/cycle message shows
+                     resetButton.disabled = false;
+                     newGraphButton.disabled = false;
+                     // Keep show answer disabled
+                 }
+            } else {
+                 stopDfsVisualization(); // Ensure stopped if iterator finishes unexpectedly
+                 resetButton.disabled = false;
+                 newGraphButton.disabled = false;
+            }
+        }
+
+
+        // --- Initialization ---
+        resetButton.addEventListener('click', resetGame);
+        newGraphButton.addEventListener('click', loadNewGraph);
+        showAnswerButton.addEventListener('click', startDfsAnswer);
+
+        // Load the first graph example on page load
+        loadGraph(GRAPH_EXAMPLES[currentGraphIndex]);
+
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Structures & Algorithms Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* Apply Inter font */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom style for selected radio button label */
+        input[type="radio"]:checked + label {
+            background-color: #dbeafe; /* Tailwind blue-100 */
+            border-color: #60a5fa; /* Tailwind blue-400 */
+        }
+         /* Style for feedback messages */
+        .feedback-correct {
+            color: #16a34a; /* Tailwind green-600 */
+            font-weight: 500;
+        }
+        .feedback-incorrect {
+            color: #dc2626; /* Tailwind red-600 */
+            font-weight: 500;
+        }
+        /* Basic button hover/active states */
+        button:not(:disabled):hover {
+            filter: brightness(90%);
+        }
+         button:not(:disabled):active {
+            transform: scale(0.98);
+         }
+         /* Simple toggle switch style */
+        .toggle-switch { position: relative; display: inline-block; width: 50px; height: 24px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
+        .toggle-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .toggle-slider { background-color: #ef4444; } /* red-500 for hard mode */
+        input:checked + .toggle-slider:before { transform: translateX(26px); }
+
+        /* Style for visualization container */
+        .visualization-content {
+            background-color: #f9fafb; /* gray-50 */
+            padding: 15px; /* Increased padding */
+            border-radius: 6px; /* Slightly more rounded */
+            margin-top: 12px;
+            margin-bottom: 12px;
+            border: 1px solid #e5e7eb; /* gray-200 */
+            overflow-x: auto; /* Add scroll for wide content */
+            display: flex; /* Use flexbox for centering */
+            justify-content: center; /* Center content horizontally */
+            align-items: center; /* Center content vertically */
+        }
+         /* Style embedded SVG within the container */
+        .visualization-content svg {
+             display: block;
+             max-width: 100%; /* Ensure SVG scales down */
+             max-height: 300px; /* Limit max height */
+             height: auto; /* Maintain aspect ratio */
+             background-color: #ffffff; /* White background for clarity */
+             border: 1px solid #d1d5db; /* gray-300 border */
+             border-radius: 4px;
+             padding: 5px; /* Add padding around SVG */
+        }
+         /* Style for <pre> tags used as fallback or for text diagrams */
+         .visualization-content pre {
+             background-color: #f3f4f6; /* gray-100 */
+             padding: 10px;
+             border-radius: 4px;
+             font-family: monospace;
+             white-space: pre; /* Keep pre formatting */
+             font-size: 0.9em;
+             border: 1px solid #e5e7eb; /* gray-200 */
+             text-align: left; /* Align text left */
+             display: inline-block; /* Allow centering via parent flex */
+             min-width: 150px; /* Ensure pre has some width */
+         }
+
+        /* Ensure radio buttons align well */
+        #options-container > div {
+            display: flex;
+            align-items: center; /* Vertically align radio and label */
+        }
+        #options-container input[type="radio"] {
+            margin-top: 0; /* Reset potential browser default margins */
+            flex-shrink: 0; /* Prevent radio button from shrinking */
+        }
+        #options-container label {
+            flex-grow: 1; /* Allow label to take remaining space */
+            padding-left: 0.75rem; /* Increased space between radio and label */
+        }
+
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-3xl">
+        <h1 class="text-2xl md:text-3xl font-bold text-center text-gray-800 mb-6">DSA Finals Prep Quiz</h1>
+
+        <div id="topic-selection" class="mb-6 text-center">
+            <div class="mb-4">
+                <label for="topic-select" class="block text-lg font-medium text-gray-700 mb-2">Select Topic:</label>
+                <select id="topic-select" class="w-full md:w-2/3 p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="all">All Topics</option>
+                    </select>
+            </div>
+             <div class="flex justify-center items-center mb-4">
+                 <span class="mr-3 text-lg font-medium text-gray-700">Hard Mode:</span>
+                 <label class="toggle-switch">
+                     <input type="checkbox" id="hard-mode-toggle">
+                     <span class="toggle-slider"></span>
+                 </label>
+            </div>
+            <button id="start-quiz-btn" class="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition duration-150 ease-in-out">
+                Start Quiz
+            </button>
+        </div>
+
+        <div id="quiz-area" class="hidden">
+            <div id="question-container" class="mb-5">
+                <p class="text-lg md:text-xl font-medium text-gray-800 mb-1" id="question-text"></p>
+                <div id="question-visualization" class="visualization-content mb-4 hidden"></div>
+                <div id="options-container" class="space-y-3 mt-4">
+                    </div>
+            </div>
+
+            <div id="feedback-container" class="mt-4 mb-4 min-h-[2em] text-center">
+                <p id="feedback-text" class="text-base"></p>
+            </div>
+
+            <div id="navigation-container" class="flex justify-between items-center">
+                 <span id="progress-text" class="text-sm text-gray-600"></span>
+                <button id="next-question-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-5 rounded-lg transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    Next
+                </button>
+            </div>
+        </div>
+
+         <div id="results-area" class="hidden text-center">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Quiz Complete!</h2>
+            <p id="score-text" class="text-lg text-gray-700 mb-6"></p>
+            <button id="restart-quiz-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-150 ease-in-out">
+                Take Another Quiz
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Question Bank ---
+        // Replaced <pre> with SVG for BST deletion question.
+        const allQuestions = [
+             // --- Basic Data Structures ---
+             {
+                topic: "Basic Data Structures", difficulty: "normal",
+                question: "Which data structure follows the First-In, First-Out (FIFO) principle?",
+                options: ["Stack", "Queue", "Heap", "Hash Table"], answerIndex: 1
+            },
+            {
+                topic: "Basic Data Structures", difficulty: "normal",
+                question: "What is the term for adding an element to a Stack?",
+                options: ["Enqueue", "Offer", "Insert", "Push"], answerIndex: 3
+            },
+            {
+                topic: "Basic Data Structures", difficulty: "hard",
+                question: "Imagine a Queue implemented with a fixed-size array and two pointers, `front` and `rear`. If the queue becomes full, what common issue might occur during `enqueue` if wrap-around is not handled?",
+                options: ["Stack overflow", "Array index out of bounds", "Null pointer exception", "Memory leak"], answerIndex: 1
+            },
+             {
+                topic: "Basic Data Structures", difficulty: "hard",
+                question: "Consider checking if parentheses are balanced using a Stack. For the input `(()())`, what is the maximum number of items ever present in the stack during processing?",
+                options: ["1", "2", "3", "4"], answerIndex: 1 // ( -> 1; (( -> 2; (() -> 1; (()) -> 0; (()()) -> 0. Max is 2.
+            },
+            // --- Analysis of Algorithms ---
+            {
+                topic: "Analysis", difficulty: "normal",
+                question: "If an algorithm's running time is proportional to the square of the input size 'n', what is its Big-O complexity?",
+                options: ["O(n)", "O(log n)", "O(1)", "O(n^2)"], answerIndex: 3
+            },
+            {
+                topic: "Analysis", difficulty: "normal",
+                question: "Which complexity class represents the fastest growth rate?",
+                options: ["O(log n)", "O(n)", "O(n log n)", "O(2^n)"], answerIndex: 3 // Exponential
+            },
+            {
+                topic: "Analysis", difficulty: "hard",
+                question: "An algorithm has nested loops. The outer loop runs N times, and the inner loop runs log N times for each outer iteration. What is the overall Big-O complexity?",
+                options: ["O(N)", "O(log N)", "O(N log N)", "O(N^2)"], answerIndex: 2
+            },
+             {
+                topic: "Analysis", difficulty: "hard",
+                question: "What does Ω(n log n) (Big-Omega) signify about an algorithm's performance?",
+                options: ["Its running time is exactly n log n.", "Its running time grows no faster than n log n.", "Its running time grows at least as fast as n log n (lower bound).", "It's faster than O(n)."], answerIndex: 2
+            },
+            // --- Recursion ---
+            {
+                topic: "Recursion", difficulty: "normal",
+                question: "What is the 'base case' in a recursive function?",
+                options: ["The first line of the function", "The condition that stops the recursion", "The recursive call itself", "A helper function"], answerIndex: 1
+            },
+            {
+                topic: "Recursion", difficulty: "normal",
+                question: "In the Tower of Hanoi problem with 3 disks, what is the minimum number of moves required?",
+                options: ["3", "5", "7", "8"], answerIndex: 2 // 2^n - 1 => 2^3 - 1 = 7
+            },
+            {
+                topic: "Recursion", difficulty: "hard",
+                question: "Consider the recurrence relation T(n) = 2T(n/2) + O(n). What is the typical time complexity solved by the Master Theorem for this relation?",
+                options: ["O(n)", "O(n log n)", "O(n^2)", "O(log n)"], answerIndex: 1 // Matches Merge Sort pattern
+            },
+             {
+                topic: "Recursion", difficulty: "hard",
+                question: "What is tail recursion, and why is it sometimes beneficial?",
+                options: ["Recursion with multiple base cases; improves readability", "The recursive call is the very last operation; allows compiler optimization (avoids stack overflow)", "Recursion that returns a boolean; used in searching", "A recursive call within a loop; increases complexity"], answerIndex: 1
+            },
+            // --- Algorithm Design ---
+             {
+                topic: "Algorithm Design", difficulty: "normal",
+                question: "Which design paradigm typically builds up a solution by choosing the locally optimal option at each step?",
+                options: ["Greedy", "Dynamic Programming", "Divide and Conquer", "Backtracking"], answerIndex: 0
+            },
+             {
+                 topic: "Algorithm Design", difficulty: "normal",
+                 question: "Which technique often involves exploring possibilities down a path and returning back if the path doesn't lead to a solution, like solving a maze?",
+                 options: ["Greedy", "Dynamic Programming", "Divide and Conquer", "Backtracking"], answerIndex: 3
+             },
+             {
+                topic: "Algorithm Design", difficulty: "hard",
+                question: "For which type of problem is Dynamic Programming often more suitable than a simple recursive approach due to repeated calculations?",
+                options: ["Problems with no optimal substructure", "Problems with independent subproblems", "Problems with overlapping subproblems", "Problems solvable in linear time"], answerIndex: 2
+            },
+             {
+                topic: "Algorithm Design", difficulty: "hard",
+                question: "The coin change problem (finding the minimum number of coins for a given amount) can be solved optimally with a greedy approach for standard US currency. Can it always be solved optimally with a greedy approach if the coin denominations were {1, 7, 10}?",
+                options: ["Yes, greedy always works", "No, greedy fails for some amounts", "Only if the amount is less than 10", "Only if the amount is a multiple of 7"], answerIndex: 1 // e.g., for 15, greedy gives 10+1*5=6 coins, optimal is 7+7+1=3 coins.
+            },
+            // --- Sorting ---
+            {
+                topic: "Sorting", difficulty: "normal",
+                question: "Which sorting algorithm works by repeatedly swapping adjacent elements if they are in the wrong order?",
+                options: ["Insertion Sort", "Selection Sort", "Bubble Sort", "Merge Sort"], answerIndex: 2
+            },
+            {
+                topic: "Sorting", difficulty: "normal",
+                question: "What is the average time complexity of Merge Sort?",
+                options: ["O(n)", "O(n log n)", "O(n^2)", "O(log n)"], answerIndex: 1
+            },
+             {
+                topic: "Sorting", difficulty: "hard",
+                question: "Consider the partitioning step in Quick Sort using the first element as pivot for the array [6, 3, 8, 2, 5, 1]. What is the state of the array *after* the partition is complete?",
+                visualization: "<pre>[6, 3, 8, 2, 5, 1]</pre>", // Keep pre for simple array display
+                options: ["[1, 3, 2, 5, 6, 8]", "[2, 3, 1, 5, 6, 8]", "[3, 2, 5, 1, 6, 8]", "[1, 3, 2, 5, 8, 6]"], answerIndex: 1 // Pivot 6. Swap 3&3. Swap 2&8->[6,3,2,8,5,1]. Swap 5&8->[6,3,2,5,8,1]. Swap 1&8->[6,3,2,5,1,8]. Final swap pivot 6&1 -> [1,3,2,5,6,8]. Index 4.
+            },
+             {
+                topic: "Sorting", difficulty: "hard",
+                question: "Which of these sorting algorithms is generally NOT stable (i.e., does not preserve the relative order of equal elements)?",
+                options: ["Merge Sort", "Insertion Sort", "Bubble Sort", "Quick Sort"], answerIndex: 3 // Standard Quick Sort is not stable.
+            },
+            // --- Searching ---
+             {
+                topic: "Searching", difficulty: "normal",
+                question: "What is the time complexity of searching for an element in an unsorted array of size N using Linear Search?",
+                options: ["O(1)", "O(log N)", "O(N)", "O(N log N)"], answerIndex: 2
+            },
+            {
+                topic: "Searching", difficulty: "normal",
+                question: "Consider the sorted array [10, 20, 30, 40, 50, 60, 70]. In a Binary Search for the value 25, what is the first element compared?",
+                options: ["10", "30", "40", "50"], answerIndex: 2 // mid = floor((0+6)/2) = 3. Index 3 is 40.
+            },
+             {
+                topic: "Searching", difficulty: "hard",
+                question: "What is the 'load factor' (α) of a hash table, and how does it typically affect the performance of Separate Chaining?",
+                options: ["α = N/M; Higher α means longer chains, slower search", "α = M/N; Higher α means shorter chains, faster search", "α = N*M; Higher α means more collisions", "α = N+M; Higher α means less memory used"], answerIndex: 0 // α = N/M (keys/size). Higher α -> longer chains -> slower average search/insert/delete.
+            },
+             {
+                topic: "Searching", difficulty: "hard", // Replaced <pre> with SVG
+                question: "Consider this BST. If you delete the root node (50) using the *successor* replacement method, which node becomes the new root?",
+                visualization: `<svg viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg" width="300" height="200"><style>.l{stroke:black;}.n{fill:#eee;stroke:black;}.t{font-family:monospace;text-anchor:middle;dominant-baseline:central;font-size:14px;}</style><line x1="150" y1="40" x2="75" y2="80" class="l"/><line x1="150" y1="40" x2="225" y2="80" class="l"/><line x1="75" y1="80" x2="37.5" y2="120" class="l"/><line x1="75" y1="80" x2="112.5" y2="120" class="l"/><line x1="225" y1="80" x2="187.5" y2="120" class="l"/><line x1="225" y1="80" x2="262.5" y2="120" class="l"/><circle cx="150" cy="40" r="15" class="n"/><text x="150" y="40" class="t">50</text><circle cx="75" cy="80" r="15" class="n"/><text x="75" y="80" class="t">30</text><circle cx="225" cy="80" r="15" class="n"/><text x="225" y="80" class="t">70</text><circle cx="37.5" cy="120" r="15" class="n"/><text x="37.5" y="120" class="t">20</text><circle cx="112.5" cy="120" r="15" class="n"/><text x="112.5" y="120" class="t">40</text><circle cx="187.5" cy="120" r="15" class="n"/><text x="187.5" y="120" class="t">60</text><circle cx="262.5" cy="120" r="15" class="n"/><text x="262.5" y="120" class="t">80</text></svg>`,
+                options: ["30", "70", "60", "40"], answerIndex: 2 // Successor is the minimum in the right subtree (60).
+            },
+             {
+                topic: "Searching", difficulty: "hard", // SVG Example - CORRECTED ANSWER INDEX
+                question: "Examine the LLRBT diagram below. Which node, if any, violates the 'left-leaning' red link rule?",
+                visualization: `<svg viewBox="0 50 200 150" xmlns="http://www.w3.org/2000/svg" width="200" height="150"> <defs><style>.r{stroke:red;stroke-width:2;}.b{stroke:black;stroke-width:1.5;}.node{fill:white;stroke:black;stroke-width:1;}.txt{font-family:monospace;text-anchor:middle;dominant-baseline:middle;font-size:12px;fill:black;}</style></defs> <line x1="100" y1="100" x2="150" y2="150" class="b"/> <line x1="150" y1="150" x2="130" y2="200" class="r"/> <circle cx="100" cy="100" r="15" class="node"/><text x="100" y="100" class="txt">50</text> <circle cx="150" cy="150" r="15" class="node"/><text x="150" y="150" class="txt">70</text> <circle cx="130" cy="200" r="15" class="node" fill="red"/><text x="130" y="200" class="txt" fill="white">60</text> </svg>`,
+                options: ["Node 50", "Node 70", "Node 60", "No violation shown"], answerIndex: 3 // CORRECTED: The diagram shows a valid left-leaning red link.
+            },
+             { // Added new LLRBT question with actual violation
+                topic: "Searching", difficulty: "hard", // SVG Example
+                question: "Examine the LLRBT diagram below. Which node is the root of the subtree containing a 'right-leaning' red link violation?",
+                visualization: `<svg viewBox="0 50 200 150" xmlns="http://www.w3.org/2000/svg" width="200" height="150"> <defs><style>.r{stroke:red;stroke-width:2;}.b{stroke:black;stroke-width:1.5;}.node{fill:white;stroke:black;stroke-width:1;}.txt{font-family:monospace;text-anchor:middle;dominant-baseline:middle;font-size:12px;fill:black;}</style></defs> <line x1="100" y1="100" x2="50" y2="150" class="b"/> <line x1="100" y1="100" x2="150" y2="150" class="r"/> <circle cx="100" cy="100" r="15" class="node"/><text x="100" y="100" class="txt">50</text> <circle cx="50" cy="150" r="15" class="node"/><text x="50" y="150" class="txt">30</text> <circle cx="150" cy="150" r="15" class="node" fill="red"/><text x="150" y="150" class="txt" fill="white">70</text> </svg>`,
+                options: ["Node 50", "Node 30", "Node 70", "No violation shown"], answerIndex: 0 // Node 50 has a right red child 70.
+            },
+            // --- Graphs ---
+             {
+                topic: "Graphs", difficulty: "normal",
+                question: "In an adjacency list representation of an undirected graph, how many times is an edge (u, v) typically represented?",
+                options: ["Once (in u's list)", "Once (in v's list)", "Twice (in u's list and v's list)", "Depends on the number of vertices"], answerIndex: 2
+            },
+            {
+                topic: "Graphs", difficulty: "normal",
+                question: "Depth First Search (DFS) typically uses which data structure implicitly or explicitly to manage the traversal?",
+                options: ["Queue", "Priority Queue", "Stack", "Hash Table"], answerIndex: 2 // Uses the call stack (implicit) or an explicit stack.
+            },
+             {
+                topic: "Graphs", difficulty: "hard", // SVG Example
+                question: "Consider the following weighted undirected graph. Using Prim's algorithm starting from vertex A, which edge is added SECOND to the MST?",
+                visualization: `<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg" width="200" height="150"> <defs><style>.e{stroke:grey;stroke-width:1;}.w{font-family:monospace;font-size:10px;text-anchor:middle;fill:blue;}.n{fill:lightblue;stroke:black;stroke-width:1;}.t{font-family:monospace;font-size:12px;text-anchor:middle;dominant-baseline:middle;}</style></defs> <line x1="50" y1="50" x2="150" y2="50" class="e"/><text x="100" y="45" class="w">7</text> <line x1="50" y1="50" x2="100" y2="120" class="e"/><text x="75" y="90" class="w">2</text> <line x1="150" y1="50" x2="100" y2="120" class="e"/><text x="125" y="90" class="w">3</text> <circle cx="50" cy="50" r="10" class="n"/><text x="50" y="50" class="t">A</text> <circle cx="150" cy="50" r="10" class="n"/><text x="150" y="50" class="t">B</text> <circle cx="100" cy="120" r="10" class="n"/><text x="100" y="120" class="t">C</text> </svg>`,
+                options: ["A-B (7)", "A-C (2)", "B-C (3)", "Cannot be determined"], answerIndex: 2 // Start A. Add A-C (2). Next closest from {A, C} is B-C (3).
+            },
+             {
+                topic: "Graphs", difficulty: "hard", // SVG Example
+                question: "In the following directed graph, which sequence represents a valid Depth First Search traversal starting from A (visiting neighbors alphabetically)?",
+                visualization: `<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg" width="200" height="150"> <defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#6b7280" /></marker><style>.e{stroke:grey;stroke-width:1.5;marker-end:url(#arrow);}.n{fill:lightgreen;stroke:black;stroke-width:1;}.t{font-family:monospace;font-size:12px;text-anchor:middle;dominant-baseline:middle;}</style></defs> <line x1="50" y1="50" x2="150" y2="50" class="e"/> <line x1="50" y1="50" x2="100" y2="120" class="e"/> <line x1="150" y1="50" x2="100" y2="120" class="e"/> <circle cx="50" cy="50" r="10" class="n"/><text x="50" y="50" class="t">A</text> <circle cx="150" cy="50" r="10" class="n"/><text x="150" y="50" class="t">B</text> <circle cx="100" cy="120" r="10" class="n"/><text x="100" y="120" class="t">C</text> </svg>`,
+                options: ["A, B, C", "A, C, B", "A, B", "A, C"], answerIndex: 0 // A -> B (alpha first). B -> C. Visit sequence A, B, C.
+            },
+             {
+                topic: "Graphs", difficulty: "hard",
+                question: "What is the primary difference between Dijkstra's algorithm and Prim's algorithm, although both use a priority queue?",
+                options: ["Prim's finds MST, Dijkstra finds shortest paths.", "Dijkstra works on directed graphs, Prim's only on undirected.", "Prim's requires non-negative weights, Dijkstra does not.", "They are essentially the same algorithm."], answerIndex: 0
+            }
+        ];
+
+        // --- DOM Elements ---
+        const topicSelect = document.getElementById('topic-select');
+        const hardModeToggle = document.getElementById('hard-mode-toggle');
+        const startQuizBtn = document.getElementById('start-quiz-btn');
+        const quizArea = document.getElementById('quiz-area');
+        const topicSelectionArea = document.getElementById('topic-selection');
+        const questionText = document.getElementById('question-text');
+        const questionVisualization = document.getElementById('question-visualization');
+        const optionsContainer = document.getElementById('options-container');
+        const feedbackText = document.getElementById('feedback-text');
+        const nextQuestionBtn = document.getElementById('next-question-btn');
+        const progressText = document.getElementById('progress-text');
+        const resultsArea = document.getElementById('results-area');
+        const scoreText = document.getElementById('score-text');
+        const restartQuizBtn = document.getElementById('restart-quiz-btn');
+
+        // --- Quiz State ---
+        let currentQuestions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let selectedAnswerIndex = null;
+        let isHardMode = false;
+
+        // --- Functions ---
+
+        /**
+         * Populates the topic dropdown from the question bank.
+         */
+        function populateTopics() {
+            const existingOptions = new Set(Array.from(topicSelect.options).map(opt => opt.value));
+            if (existingOptions.has("Sorting")) return; // Avoid duplicates
+
+            const topics = [...new Set(allQuestions.map(q => q.topic))].sort();
+            topics.forEach(topic => {
+                const option = document.createElement('option');
+                option.value = topic;
+                option.textContent = topic;
+                topicSelect.appendChild(option);
+            });
+        }
+
+        /**
+         * Starts the quiz with questions from the selected topic and difficulty.
+         */
+        function startQuiz() {
+            const selectedTopic = topicSelect.value;
+            isHardMode = hardModeToggle.checked;
+            score = 0;
+            currentQuestionIndex = 0;
+            selectedAnswerIndex = null;
+
+            let filteredQuestions = allQuestions;
+            if (selectedTopic !== 'all') {
+                filteredQuestions = filteredQuestions.filter(q => q.topic === selectedTopic);
+            }
+
+            // Apply difficulty filter
+            const targetDifficulty = isHardMode ? 'hard' : 'normal';
+            currentQuestions = filteredQuestions.filter(q => q.difficulty === targetDifficulty);
+
+            // Fallback logic if no questions match the difficulty
+            if (currentQuestions.length === 0) {
+                 const fallbackDifficulty = isHardMode ? 'normal' : 'hard'; // Try the other difficulty
+                 const fallbackQuestions = filteredQuestions.filter(q => q.difficulty === fallbackDifficulty);
+
+                 if (fallbackQuestions.length > 0) {
+                     alert(`No '${targetDifficulty}' questions available for '${selectedTopic}'. Showing '${fallbackDifficulty}' questions instead.`);
+                     currentQuestions = fallbackQuestions;
+                 } else if (filteredQuestions.length > 0) {
+                     alert(`No '${targetDifficulty}' or '${fallbackDifficulty}' questions for '${selectedTopic}'. Showing all available questions for this topic.`);
+                     currentQuestions = filteredQuestions; // Show whatever exists for the topic
+                 } else {
+                    alert(`No questions available for '${selectedTopic}'! Please select another topic.`);
+                    return;
+                 }
+            }
+
+             currentQuestions.sort(() => Math.random() - 0.5); // Shuffle selected questions
+
+            topicSelectionArea.classList.add('hidden');
+            resultsArea.classList.add('hidden');
+            quizArea.classList.remove('hidden');
+            displayQuestion();
+        }
+
+        /**
+         * Displays the current question and its options.
+         */
+        function displayQuestion() {
+            selectedAnswerIndex = null;
+            feedbackText.textContent = '';
+            feedbackText.className = 'text-base';
+            nextQuestionBtn.disabled = true;
+            questionVisualization.innerHTML = ''; // Clear previous visualization
+            questionVisualization.classList.add('hidden'); // Hide by default
+
+            if (currentQuestionIndex >= currentQuestions.length) {
+                showResults();
+                return;
+            }
+
+            const question = currentQuestions[currentQuestionIndex];
+
+            // Display question text
+            questionText.textContent = question.question;
+
+            // Display visualization (SVG or Preformatted text)
+            if (question.visualization) {
+                // Directly insert the SVG/Pre content.
+                questionVisualization.innerHTML = question.visualization;
+                questionVisualization.classList.remove('hidden');
+            }
+
+            optionsContainer.innerHTML = ''; // Clear previous options
+
+            // Shuffle options
+            let shuffledOptions = question.options.map((option, index) => ({ option, index }));
+            shuffledOptions.sort(() => Math.random() - 0.5);
+
+            shuffledOptions.forEach(({ option, index }) => {
+                const optionId = `option-${index}`;
+                const div = document.createElement('div');
+                div.classList.add('border', 'border-gray-300', 'rounded-lg', 'p-3', 'hover:bg-gray-100', 'transition', 'duration-150', 'flex', 'items-center');
+
+                const input = document.createElement('input');
+                input.type = 'radio';
+                input.id = optionId;
+                input.name = 'quizOption';
+                input.value = index; // Store the ORIGINAL index
+                input.classList.add('form-radio', 'h-5', 'w-5', 'text-indigo-600', 'flex-shrink-0');
+                input.addEventListener('change', handleOptionSelect);
+
+                const label = document.createElement('label');
+                label.htmlFor = optionId;
+                label.textContent = option;
+                label.classList.add('text-gray-700', 'text-base', 'cursor-pointer', 'block', 'w-full', 'pl-3', 'flex-grow');
+
+                div.appendChild(input);
+                div.appendChild(label);
+                optionsContainer.appendChild(div);
+            });
+
+             updateProgress();
+        }
+
+         /**
+         * Updates the progress text (e.g., "Question 1 of 10").
+         */
+        function updateProgress() {
+            progressText.textContent = `Question ${currentQuestionIndex + 1} of ${currentQuestions.length}`;
+        }
+
+
+        /**
+         * Handles the selection of a radio button option.
+         */
+        function handleOptionSelect(event) {
+            selectedAnswerIndex = parseInt(event.target.value); // Value is the original index
+            checkAnswer(); // Check answer immediately on selection
+        }
+
+        /**
+         * Checks the selected answer against the correct answer.
+         */
+        function checkAnswer() {
+            if (selectedAnswerIndex === null) return; // No answer selected
+
+            const question = currentQuestions[currentQuestionIndex];
+            const correct = selectedAnswerIndex === question.answerIndex;
+
+            // Disable further selections
+            const radioButtons = optionsContainer.querySelectorAll('input[type="radio"]');
+            radioButtons.forEach(radio => {
+                radio.disabled = true;
+                const label = radio.nextElementSibling;
+                const parentDiv = radio.parentElement;
+                parentDiv.classList.remove('hover:bg-gray-100');
+
+                // Highlight correct and incorrect answers
+                const originalOptionIndex = parseInt(radio.value);
+                if (originalOptionIndex === question.answerIndex) {
+                     parentDiv.classList.add('bg-green-100', 'border-green-400');
+                } else if (originalOptionIndex === selectedAnswerIndex) {
+                     parentDiv.classList.add('bg-red-100', 'border-red-400');
+                }
+                 parentDiv.classList.add('cursor-not-allowed');
+            });
+
+            if (correct) {
+                score++;
+                feedbackText.textContent = 'Correct!';
+                feedbackText.className = 'text-base feedback-correct';
+            } else {
+                const correctOptionText = question.options[question.answerIndex];
+                feedbackText.textContent = `Incorrect. The correct answer was: ${correctOptionText}`;
+                 feedbackText.className = 'text-base feedback-incorrect';
+            }
+
+            nextQuestionBtn.disabled = false;
+            setTimeout(() => nextQuestionBtn.focus(), 100);
+        }
+
+        /**
+         * Loads the next question or shows results if the quiz is finished.
+         */
+        function loadNextQuestion() {
+            currentQuestionIndex++;
+            displayQuestion();
+        }
+
+        /**
+         * Displays the final score and hides the quiz area.
+         */
+        function showResults() {
+            quizArea.classList.add('hidden');
+            resultsArea.classList.remove('hidden');
+            scoreText.textContent = `Your final score is ${score} out of ${currentQuestions.length}. (${isHardMode ? 'Hard Mode' : 'Normal Mode'})`;
+        }
+
+         /**
+          * Resets the quiz interface to the topic selection screen.
+          */
+         function resetQuiz() {
+            resultsArea.classList.add('hidden');
+            quizArea.classList.add('hidden');
+            topicSelectionArea.classList.remove('hidden');
+            questionText.textContent = '';
+            optionsContainer.innerHTML = '';
+            feedbackText.textContent = '';
+            progressText.textContent = '';
+            questionVisualization.innerHTML = '';
+            questionVisualization.classList.add('hidden');
+         }
+
+
+        // --- Event Listeners ---
+        startQuizBtn.addEventListener('click', startQuiz);
+        nextQuestionBtn.addEventListener('click', loadNextQuestion);
+        restartQuizBtn.addEventListener('click', resetQuiz);
+
+        // --- Initial Setup ---
+        populateTopics(); // Load topics into the dropdown
+        resetQuiz(); // Start at the topic selection screen
+
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlgoGraph Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @font-face {
+        font-family: 'LucideIcons';
+        src: url(https://cdn.jsdelivr.net/npm/lucide-static@latest/font/Lucide.ttf) format('truetype');
+      }
+      .lucide {
+        font-family: 'LucideIcons';
+        font-size: 1.25rem; /* Adjust size as needed */
+        line-height: 1;
+      }
+      /* Basic styles for SVG elements */
+      .graph-node circle {
+        transition: fill 0.3s ease, stroke 0.3s ease;
+        cursor: pointer;
+      }
+      .graph-node text {
+        font-family: sans-serif;
+        font-size: 10px;
+        pointer-events: none; /* Prevent text from blocking circle clicks */
+        fill: #ffffff; /* White text for visibility on nodes */
+        font-weight: bold;
+      }
+       /* Add text for Dijkstra distances */
+       .graph-node .distance-text {
+           font-family: sans-serif;
+           font-size: 9px;
+           fill: #1f2937; /* gray-800 */
+           text-anchor: middle;
+           transform: translateY(25px); /* Position below node */
+           pointer-events: none;
+           font-weight: bold;
+       }
+      .graph-edge {
+        transition: stroke 0.3s ease, stroke-width 0.3s ease;
+        cursor: pointer; /* Make edges clickable for MST algorithms */
+      }
+       .graph-edge:hover {
+           stroke: #f59e0b; /* amber-500 */
+           stroke-width: 4;
+       }
+
+      .graph-edge-weight {
+          font-family: sans-serif;
+          font-size: 11px;
+          fill: #1f2937; /* gray-800 */
+          pointer-events: none;
+          font-weight: bold;
+      }
+      /* Style for highlighting selectable elements */
+      .selectable-node circle {
+          stroke: #fbbf24 !important; /* amber-400 */
+          stroke-width: 3 !important;
+      }
+       .selectable-edge {
+           stroke: #fbbf24 !important; /* amber-400 */
+           stroke-width: 5 !important;
+       }
+       /* Style for incorrect selections */
+       .incorrect-selection circle, .incorrect-selection line {
+            stroke: #ef4444 !important; /* red-500 */
+            stroke-width: 3 !important;
+       }
+
+       /* Style for edge being considered (Only applied in Normal Mode) */
+       .considering-edge {
+            stroke: #f97316 !important; /* orange-500 */
+            stroke-width: 4 !important;
+       }
+        /* Style for MST Edge */
+       .mst-edge {
+            stroke: #16a34a !important; /* green-600 */
+            stroke-width: 3 !important;
+       }
+       /* Style for Dijkstra path edge */
+       .dijkstra-path-edge {
+            stroke: #8b5cf6 !important; /* violet-500 */
+            stroke-width: 3 !important;
+       }
+
+
+       /* Improved Data Structure View */
+       #data-structure-view ul { list-style: none; padding: 0; margin: 0;}
+       #data-structure-view li { margin-bottom: 0.25rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.8rem; }
+       #data-structure-view .stack-item { background-color: #e0e7ff; border: 1px solid #c7d2fe; }
+       #data-structure-view .queue-item { background-color: #d1fae5; border: 1px solid #a7f3d0; }
+       #data-structure-view .pq-item { background-color: #ffedd5; border: 1px solid #fed7aa; }
+       #data-structure-view .edge-item { background-color: #e5e7eb; border: 1px solid #d1d5db; }
+       #data-structure-view .dsu-item { background-color: #f3e8ff; border: 1px solid #e9d5ff; margin-top: 0.5rem; padding: 0.5rem;}
+       #data-structure-view .distance-item { background-color: #fef3c7; border: 1px solid #fde68a; margin-top: 0.5rem; padding: 0.5rem;} /* For Dijkstra distances */
+       #data-structure-view .stack-top { font-weight: bold; border: 2px solid #818cf8; }
+       #data-structure-view .queue-front { font-weight: bold; border: 2px solid #6ee7b7; }
+       #data-structure-view .pq-min { font-weight: bold; border: 2px solid #fb923c; }
+       #data-structure-view .kruskal-next { font-weight: bold; border: 2px solid #60a5fa; }
+
+        /* Dynamic buttons styling */
+        .action-button {
+            padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 600;
+            transition: background-color 0.15s ease-in-out; cursor: pointer; margin: 0 0.25rem;
+        }
+        .action-button-yes { background-color: #22c55e; color: white; }
+        .action-button-yes:hover { background-color: #16a34a; }
+        .action-button-no { background-color: #ef4444; color: white; }
+        .action-button-no:hover { background-color: #dc2626; }
+
+    </style>
+    <script>
+        // Tailwind Configuration
+        tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'], }, } } }
+    </script>
+</head>
+<body class="bg-gray-100 font-sans flex flex-col h-screen">
+
+    <header class="bg-blue-600 text-white p-4 shadow-md">
+        <h1 class="text-2xl font-bold text-center">AlgoGraph Explorer</h1>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden p-4 gap-4">
+
+        <aside class="w-1/3 bg-white rounded-lg shadow-md p-4 flex flex-col gap-4 overflow-y-auto">
+            <div>
+                <h2 class="text-lg font-semibold mb-2 border-b pb-1">1. Select Algorithm</h2>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="btn-dfs" class="algo-button bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out">DFS</button>
+                    <button id="btn-bfs" class="algo-button bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out">BFS</button>
+                    <button id="btn-kruskal" class="algo-button bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out">Kruskal's</button>
+                    <button id="btn-prim" class="algo-button bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out">Prim's</button>
+                    <button id="btn-dijkstra" class="algo-button bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out col-span-2">Dijkstra's</button>
+                </div>
+            </div>
+
+            <div>
+                <h2 class="text-lg font-semibold mb-2 border-b pb-1">2. Setup Graph</h2>
+                 <div class="flex flex-col gap-2">
+                    <button id="btn-load-random" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out">Load Random Graph</button>
+                    <div class="flex items-center gap-2">
+                        <label for="start-node-input" class="text-sm font-medium">Start Node:</label>
+                        <input type="text" id="start-node-input" class="border border-gray-300 rounded px-2 py-1 text-sm w-16" placeholder="e.g., 0">
+                    </div>
+                    <div class="flex items-center gap-2 mt-2">
+                        <input type="checkbox" id="hard-mode-toggle" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <label for="hard-mode-toggle" class="text-sm font-medium">Hard Mode (No Hints)</label>
+                    </div>
+                    <button id="btn-start" class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out disabled:opacity-50 mt-2" disabled>Start Algorithm</button>
+                    <button id="btn-reset" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out">Reset</button>
+                 </div>
+            </div>
+
+            <div>
+                <h2 class="text-lg font-semibold mb-2 border-b pb-1">Data Structure / State</h2>
+                <div id="data-structure-view" class="bg-gray-100 p-3 rounded min-h-[10rem] h-48 overflow-y-auto text-sm font-mono">
+                    Select an algorithm and start...
+                </div>
+            </div>
+
+             <div>
+                <h2 class="text-lg font-semibold mb-2 border-b pb-1">Algorithm Stats</h2>
+                <div id="algorithm-state-view" class="bg-gray-100 p-3 rounded min-h-[5rem] h-24 overflow-y-auto text-sm">
+                    State details will appear here.
+                </div>
+            </div>
+
+             <div>
+                <h2 class="text-lg font-semibold mb-2 border-b pb-1">Algorithm Description</h2>
+                <div id="algorithm-description-view" class="bg-blue-50 p-3 rounded min-h-[6rem] h-32 overflow-y-auto text-sm text-blue-900">
+                    Select an algorithm to see its description.
+                </div>
+            </div>
+
+             <div id="action-buttons-area" class="mt-2 flex justify-center">
+                </div>
+        </aside>
+
+        <main class="w-2/3 bg-white rounded-lg shadow-md p-4 flex flex-col">
+            <div class="flex-1 border border-gray-300 rounded-lg overflow-hidden bg-gray-50 relative">
+                <svg id="graph-canvas" width="100%" height="100%"></svg>
+                 <div id="graph-overlay" class="absolute inset-0 bg-black bg-opacity-50 text-white text-xl font-bold flex items-center justify-center hidden p-4 text-center">
+                     Overlay Message
+                 </div>
+            </div>
+
+            <div class="mt-4">
+                <h2 class="text-lg font-semibold mb-1">Feedback & Prompt</h2>
+                <div id="feedback-area" class="bg-gray-100 p-3 rounded min-h-[6rem] h-24 overflow-y-auto text-sm text-gray-700">
+                    Welcome! Load a random graph to begin.
+                </div>
+            </div>
+        </main>
+
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const graphCanvas = document.getElementById('graph-canvas');
+        const graphOverlay = document.getElementById('graph-overlay');
+        const feedbackArea = document.getElementById('feedback-area');
+        const dataStructureView = document.getElementById('data-structure-view');
+        const algorithmStateView = document.getElementById('algorithm-state-view');
+        const algorithmDescriptionView = document.getElementById('algorithm-description-view');
+        const actionButtonsArea = document.getElementById('action-buttons-area');
+        const btnLoadRandom = document.getElementById('btn-load-random');
+        const btnReset = document.getElementById('btn-reset');
+        const btnStart = document.getElementById('btn-start');
+        const startNodeInput = document.getElementById('start-node-input');
+        const algoButtons = document.querySelectorAll('.algo-button');
+        const hardModeToggle = document.getElementById('hard-mode-toggle');
+
+        // --- Constants ---
+        const NODE_RADIUS = 15;
+        const NODE_COLOR = '#3b82f6';
+        const NODE_VISITING_COLOR = '#f97316';
+        const NODE_VISITED_COLOR = '#16a34a';
+        const NODE_HIGHLIGHT_COLOR = '#fbbf24';
+        const EDGE_COLOR = '#9ca3af';
+        const EDGE_CONSIDERING_COLOR = '#f97316';
+        const EDGE_HIGHLIGHT_COLOR = '#fbbf24';
+        const MST_EDGE_COLOR = '#16a34a';
+        const DIJKSTRA_PATH_EDGE_COLOR = '#8b5cf6';
+
+        // --- Application State ---
+        let currentAlgorithm = null;
+        let graphData = null;
+        let algorithmState = {};
+        let isAlgorithmRunning = false;
+        let isWaitingForUserInput = false;
+        let expectedAction = { type: null, correctChoice: null, options: [], data: {} };
+        let isHardMode = false;
+
+        // --- Algorithm Descriptions ---
+        const algorithmDescriptions = {
+            dfs: "<strong>Depth-First Search (DFS):</strong> Explores as far as possible along each branch before backtracking. Uses a Stack. Good for pathfinding, cycle detection, topological sort.",
+            bfs: "<strong>Breadth-First Search (BFS):</strong> Explores level by level, visiting all neighbors at the current depth before moving deeper. Uses a Queue. Finds the shortest path in unweighted graphs.",
+            kruskal: "<strong>Kruskal's Algorithm:</strong> Finds a Minimum Spanning Tree (MST) for a weighted, undirected graph. Greedily adds the lowest-weight edges that don't form a cycle. Uses a Disjoint Set Union (DSU) data structure.",
+            prim: "<strong>Prim's Algorithm:</strong> Finds a Minimum Spanning Tree (MST). Starts from an arbitrary node and grows the MST by adding the cheapest edge connecting a node in the MST to one outside it. Uses a Priority Queue.",
+            dijkstra: "<strong>Dijkstra's Algorithm:</strong> Finds the shortest paths from a single source node to all other nodes in a weighted graph (with non-negative weights). Uses a Priority Queue to greedily select the nearest unvisited node. Maintains tentative distances.",
+            default: "Select an algorithm to see its description."
+        };
+
+        // --- Random Graph Generation Parameters ---
+        const DEFAULT_NUM_NODES = 8;
+        const DEFAULT_EDGE_PROBABILITY = 0.35;
+        const MIN_EDGE_WEIGHT = 1;
+        const MAX_EDGE_WEIGHT = 20;
+
+        // --- Utility Functions ---
+        function updateFeedback(message, type = 'info') {
+            feedbackArea.innerHTML = message;
+            let bgColor = 'bg-gray-100'; let textColor = 'text-gray-700';
+            switch(type) {
+                case 'prompt': bgColor = 'bg-blue-100'; textColor = 'text-blue-800'; break;
+                case 'success': bgColor = 'bg-green-100'; textColor = 'text-green-800'; break;
+                case 'error': bgColor = 'bg-red-100'; textColor = 'text-red-800'; break;
+            }
+            feedbackArea.className = `p-3 rounded min-h-[6rem] h-24 overflow-y-auto text-sm ${bgColor} ${textColor}`;
+            console.log(`Feedback (${type}):`, message.replace(/<br\s*\/?>/gi, '\n'));
+        }
+
+        function showOverlay(message) {
+            graphOverlay.textContent = message;
+            graphOverlay.classList.remove('hidden');
+        }
+
+        function hideOverlay() {
+            graphOverlay.classList.add('hidden');
+        }
+
+        function updateAlgorithmDescription(algo = null) {
+            const desc = algorithmDescriptions[algo] || algorithmDescriptions.default;
+            algorithmDescriptionView.innerHTML = desc;
+        }
+
+        function updateDataStructureView() {
+            if (!isAlgorithmRunning && !algorithmState.complete) {
+                 dataStructureView.innerHTML = 'Select an algorithm and start...';
+                 return;
+            }
+            let html = '';
+            try {
+                switch(currentAlgorithm) {
+                    case 'dfs':
+                        html = '<strong>Stack (Top to Bottom):</strong><ul>';
+                        if (algorithmState.stack && algorithmState.stack.length > 0) {
+                            algorithmState.stack.slice().reverse().forEach((item, index) => {
+                                const isTop = index === 0;
+                                html += `<li class="stack-item ${isTop ? 'stack-top' : ''}">${item}</li>`;
+                            });
+                        } else { html += '<li class="text-gray-500">Empty</li>'; }
+                        html += '</ul>';
+                        break;
+                    case 'bfs':
+                        html = '<strong>Queue (Front to Back):</strong><ul>';
+                        if (algorithmState.queue && algorithmState.queue.length > 0) {
+                            algorithmState.queue.forEach((item, index) => {
+                                const isFront = index === 0;
+                                html += `<li class="queue-item ${isFront ? 'queue-front' : ''}">${item}</li>`;
+                            });
+                        } else { html += '<li class="text-gray-500">Empty</li>'; }
+                        html += '</ul>';
+                        break;
+                    case 'kruskal':
+                        html = '<strong>Edges (Sorted by Weight):</strong><ul>';
+                        const remainingEdges = algorithmState.sortedEdges?.slice(algorithmState.edgeIndex) || [];
+                        if (remainingEdges.length > 0) {
+                            remainingEdges.slice(0, 10).forEach((edge, index) => {
+                                const isNext = index === 0;
+                                html += `<li class="edge-item ${isNext ? 'kruskal-next' : ''}">Edge ${edge.source}-${edge.target} (w: ${edge.weight})</li>`;
+                            });
+                            if (remainingEdges.length > 10) html += '<li>...</li>';
+                        } else { html += '<li class="text-gray-500">None remaining</li>'; }
+                        html += '</ul>';
+                        html += '<div class="dsu-item"><strong>DSU Parents:</strong><br>';
+                        if (algorithmState.dsuParent) {
+                            html += Object.entries(algorithmState.dsuParent)
+                                .map(([node, parent]) => `${node} -> ${parent}`)
+                                .join(', ');
+                        } else { html += 'N/A'; }
+                        html += '</div>';
+                        break;
+                    case 'prim':
+                        html = '<strong>Priority Queue (Min Weight First):</strong><ul>';
+                        const pqPrim = algorithmState.pq || [];
+                        const sortedPQPrim = [...pqPrim].sort((a, b) => a.weight - b.weight);
+                        if (sortedPQPrim.length > 0) {
+                            sortedPQPrim.slice(0, 10).forEach((edge, index) => {
+                                const isMin = index === 0;
+                                html += `<li class="pq-item ${isMin ? 'pq-min' : ''}">Edge ${edge.source}-${edge.target} (w: ${edge.weight})</li>`;
+                            });
+                            if (sortedPQPrim.length > 10) html += '<li>...</li>';
+                        } else { html += '<li class="text-gray-500">Empty</li>'; }
+                        html += '</ul>';
+                         html += '<div class="dsu-item"><strong>Nodes in MST:</strong><br>';
+                         if (algorithmState.inMST) {
+                             html += Array.from(algorithmState.inMST).join(', ');
+                         } else { html += 'N/A'; }
+                         html += '</div>';
+                        break;
+                    case 'dijkstra':
+                        html = '<strong>Distances & Previous Nodes:</strong>';
+                        html += '<div class="distance-item">';
+                        if (algorithmState.distances) {
+                            html += Object.entries(algorithmState.distances)
+                                .sort(([nodeA], [nodeB]) => parseInt(nodeA) - parseInt(nodeB)) // Sort by node ID for consistent display
+                                .map(([node, dist]) =>
+                                    `Node ${node}: dist=${dist === Infinity ? '∞' : dist}` +
+                                    (algorithmState.previousNodes?.[node] ? ` (prev=${algorithmState.previousNodes[node]})` : '')
+                                )
+                                .join('<br>');
+                        } else { html += 'N/A'; }
+                        html += '</div>';
+                        html += '<strong>Priority Queue (Node, Dist):</strong><ul>';
+                         const pqDijkstra = algorithmState.pq || [];
+                         const sortedPQDijkstra = [...pqDijkstra].sort((a, b) => a.distance - b.distance);
+                         if (sortedPQDijkstra.length > 0) {
+                            let minUnvisitedNodeId = null; let minUnvisitedDist = Infinity;
+                            for(const item of sortedPQDijkstra) { if (!algorithmState.visited.has(item.nodeId) && item.distance < minUnvisitedDist) { minUnvisitedDist = item.distance; minUnvisitedNodeId = item.nodeId; } }
+                             sortedPQDijkstra.slice(0, 10).forEach((item) => { const isMin = item.nodeId === minUnvisitedNodeId && item.distance === minUnvisitedDist; html += `<li class="pq-item ${isMin ? 'pq-min' : ''}">(${item.nodeId}, ${item.distance === Infinity ? '∞' : item.distance})</li>`; });
+                              if (sortedPQDijkstra.length > 10) html += '<li>...</li>';
+                         } else { html += '<li class="text-gray-500">Empty</li>'; }
+                         html += '</ul>';
+                        break;
+                    default:
+                        html = 'Data structure view not available.';
+                }
+            } catch (e) { console.error("Error updating data structure view:", e); html = "Error displaying data structure."; }
+            dataStructureView.innerHTML = html;
+        }
+
+         function updateAlgorithmStateView() {
+             if (!isAlgorithmRunning && !algorithmState.complete) {
+                 algorithmStateView.innerHTML = 'State details will appear here.';
+                 return;
+             }
+             const content = {
+                Status: algorithmState.complete ? "Completed" : (isWaitingForUserInput ? "Waiting for Input" : "Running"),
+                Mode: isHardMode ? "Hard" : "Normal", Score: algorithmState.score ?? 0, Mistakes: algorithmState.mistakes ?? 0, Steps: algorithmState.stepsTaken ?? 0,
+                ...(currentAlgorithm === 'dfs' || currentAlgorithm === 'bfs' || currentAlgorithm === 'dijkstra') && { Visited_Nodes: algorithmState.visited?.size || 0 },
+                ...(currentAlgorithm === 'kruskal' || currentAlgorithm === 'prim') && { MST_Edges: algorithmState.mstEdges?.length || 0 },
+                ...(currentAlgorithm === 'kruskal' || currentAlgorithm === 'prim') && { MST_Weight: algorithmState.mstWeight || 0 },
+             };
+            algorithmStateView.innerHTML = Object.entries(content) .map(([key, value]) => `<div><strong class="capitalize">${key.replace(/_/g, ' ')}:</strong> ${value}</div>`) .join('');
+         }
+
+        // --- Random Graph Generation ---
+        function generateRandomGraph(numNodes = DEFAULT_NUM_NODES, edgeProb = DEFAULT_EDGE_PROBABILITY) {
+            console.log(`generateRandomGraph called with numNodes=${numNodes}, edgeProb=${edgeProb}`);
+            const nodes = []; const edges = []; const nodeSpacing = 80; const padding = 50; let svgWidth = 600; let svgHeight = 400;
+            try {
+                if (graphCanvas) { svgWidth = graphCanvas.clientWidth || svgWidth; svgHeight = graphCanvas.clientHeight || svgHeight; console.log(`generateRandomGraph: SVG dimensions - Width=${svgWidth}, Height=${svgHeight}`); } else { console.warn("generateRandomGraph: graphCanvas not found or has no dimensions yet, using defaults."); }
+                 if (svgWidth <= 2 * padding || svgHeight <= 2 * padding) { console.error("generateRandomGraph: SVG dimensions too small for padding."); svgWidth = Math.max(svgWidth, 300); svgHeight = Math.max(svgHeight, 200); }
+                let attempts = 0; while (nodes.length < numNodes && attempts < numNodes * 100) { attempts++; const newNode = { id: String(nodes.length), x: padding + Math.random() * (svgWidth - 2 * padding), y: padding + Math.random() * (svgHeight - 2 * padding) }; let tooClose = false; for (const existingNode of nodes) { const dx = newNode.x - existingNode.x; const dy = newNode.y - existingNode.y; if (Math.sqrt(dx * dx + dy * dy) < nodeSpacing) { tooClose = true; break; } } if (!tooClose) { nodes.push(newNode); } }
+                 if(attempts >= numNodes * 100) { console.warn("generateRandomGraph: Could not place all nodes with desired spacing."); } console.log(`generateRandomGraph: Generated ${nodes.length} nodes.`);
+                const edgeSet = new Set(); for (let i = 0; i < nodes.length; i++) { for (let j = i + 1; j < nodes.length; j++) { if (Math.random() < edgeProb) { const sourceId = nodes[i].id; const targetId = nodes[j].id; const edgeId = `edge-${sourceId}-${targetId}`; const weight = Math.floor(Math.random() * (MAX_EDGE_WEIGHT - MIN_EDGE_WEIGHT + 1)) + MIN_EDGE_WEIGHT; edges.push({ source: sourceId, target: targetId, weight: weight, id: edgeId }); edgeSet.add(`${sourceId}-${targetId}`); } } }
+                if (nodes.length > 1) { const startNodeId = nodes[0].id; let startNodeHasEdge = edges.some(e => e.source === startNodeId || e.target === startNodeId); if (!startNodeHasEdge && nodes.length > 1) { const targetIndex = Math.floor(Math.random() * (nodes.length - 1)) + 1; const targetNodeId = nodes[targetIndex].id; const edgeId = `edge-${startNodeId}-${targetNodeId}`; if (!edgeSet.has(`${startNodeId}-${targetNodeId}`) && !edgeSet.has(`${targetNodeId}-${startNodeId}`)) { const weight = Math.floor(Math.random() * (MAX_EDGE_WEIGHT - MIN_EDGE_WEIGHT + 1)) + MIN_EDGE_WEIGHT; edges.push({ source: startNodeId, target: targetNodeId, weight: weight, id: edgeId }); console.log(`generateRandomGraph: Added connecting edge for node ${startNodeId}`); } } } console.log(`generateRandomGraph: Generated ${edges.length} edges.`);
+            } catch (error) { console.error("Error during random graph generation:", error); updateFeedback("Error generating random graph. Check console.", 'error'); return null; }
+            return { nodes, edges };
+        }
+
+        function drawGraph() {
+            console.log("drawGraph called."); if (!graphData || !graphData.nodes || !graphData.edges) { console.error("drawGraph: Invalid or missing graphData."); updateFeedback("Cannot draw graph: Invalid data.", 'error'); graphCanvas.innerHTML = '<text x="10" y="20" fill="red">Error: Invalid graph data</text>'; return; } if (!graphCanvas) { console.error("drawGraph: graphCanvas element not found."); return; }
+            graphCanvas.innerHTML = ''; console.log(`drawGraph: Drawing ${graphData.nodes.length} nodes and ${graphData.edges.length} edges.`); const { nodes, edges } = graphData; const svgNs = "http://www.w3.org/2000/svg";
+            try {
+                const edgeGroup = document.createElementNS(svgNs, 'g'); edgeGroup.setAttribute('id', 'edge-group'); graphCanvas.appendChild(edgeGroup);
+                edges.forEach((edge, index) => { const sourceNode = nodes.find(n => n.id === edge.source); const targetNode = nodes.find(n => n.id === edge.target); if (!sourceNode || !targetNode) { console.warn(`drawGraph: Skipping edge ${edge.id}, node(s) not found.`); return; } const line = document.createElementNS(svgNs, 'line'); line.setAttribute('x1', sourceNode.x); line.setAttribute('y1', sourceNode.y); line.setAttribute('x2', targetNode.x); line.setAttribute('y2', targetNode.y); line.setAttribute('stroke', EDGE_COLOR); line.setAttribute('stroke-width', '2'); line.setAttribute('id', edge.id); line.classList.add('graph-edge'); line.dataset.source = edge.source; line.dataset.target = edge.target; line.addEventListener('click', ((edgeData) => () => handleEdgeClick(edgeData))(edge)); edgeGroup.appendChild(line); if (edge.weight !== undefined) { const text = document.createElementNS(svgNs, 'text'); text.setAttribute('x', (sourceNode.x + targetNode.x) / 2 + 5); text.setAttribute('y', (sourceNode.y + targetNode.y) / 2 - 5); text.textContent = edge.weight; text.classList.add('graph-edge-weight'); edgeGroup.appendChild(text); } });
+                const nodeGroup = document.createElementNS(svgNs, 'g'); nodeGroup.setAttribute('id', 'node-group'); graphCanvas.appendChild(nodeGroup);
+                nodes.forEach((node, index) => { const group = document.createElementNS(svgNs, 'g'); group.classList.add('graph-node'); group.setAttribute('id', `node-${node.id}`); group.setAttribute('transform', `translate(${node.x}, ${node.y})`); group.dataset.nodeId = node.id; const circle = document.createElementNS(svgNs, 'circle'); circle.setAttribute('r', NODE_RADIUS); circle.setAttribute('fill', NODE_COLOR); circle.setAttribute('stroke', '#333'); circle.setAttribute('stroke-width', '1'); group.appendChild(circle); const text = document.createElementNS(svgNs, 'text'); text.setAttribute('text-anchor', 'middle'); text.setAttribute('dy', '.3em'); text.textContent = node.id; group.appendChild(text); const distText = document.createElementNS(svgNs, 'text'); distText.classList.add('distance-text'); distText.textContent = ''; group.appendChild(distText); group.addEventListener('click', ((nodeId) => () => handleNodeClick(nodeId))(node.id)); nodeGroup.appendChild(group); });
+                console.log("drawGraph: Drawing completed successfully.");
+            } catch (error) { console.error("Error during graph drawing:", error); updateFeedback("Error drawing graph. Check console.", 'error'); graphCanvas.innerHTML = `<text x="10" y="20" fill="red">Error drawing graph: ${error.message}</text>`; }
+        }
+
+        // --- DSU Helper Functions ---
+        function findSet(parentMap, node) { if (!parentMap[node] || parentMap[node] === node) { if (!parentMap[node]) parentMap[node] = node; return node; } parentMap[node] = findSet(parentMap, parentMap[node]); return parentMap[node]; }
+        function unionSets(parentMap, node1, node2) { const root1 = findSet(parentMap, node1); const root2 = findSet(parentMap, node2); if (root1 !== root2) { parentMap[root1] = root2; return true; } return false; }
+
+        // --- Prim's Priority Queue Helper ---
+        function addToPriorityQueue(pq, edge) { const exists = pq.some(e => (e.source === edge.source && e.target === edge.target) || (e.source === edge.target && e.target === edge.source)); if (!exists) { pq.push(edge); } }
+        function findMinValidPrimEdge(pq, inMST) { let minEdge = null; let minWeight = Infinity; let minIndex = -1; for (let i = 0; i < pq.length; i++) { const edge = pq[i]; const uIn = inMST.has(edge.source); const vIn = inMST.has(edge.target); if (uIn !== vIn) { if (edge.weight < minWeight) { minWeight = edge.weight; minEdge = edge; minIndex = i; } } } return { edge: minEdge, index: minIndex }; }
+
+        // --- Dijkstra's Priority Queue Helper ---
+        function findMinValidDijkstraNode(pq, visited) { let minNode = null; let minDistance = Infinity; let minIndex = -1; for (let i = 0; i < pq.length; i++) { const item = pq[i]; if (!visited.has(item.nodeId) && item.distance < minDistance) { minDistance = item.distance; minNode = item; minIndex = i; } } return { node: minNode, index: minIndex }; }
+
+        // Function to update Dijkstra distance text on the node
+        function updateNodeDistanceText(nodeId, distance) {
+             const nodeGroup = graphCanvas.querySelector(`#node-${nodeId}`);
+             const textElement = nodeGroup?.querySelector('.distance-text');
+             if (textElement) {
+                 textElement.textContent = distance === Infinity ? '∞' : distance;
+             }
+        }
+
+         // --- Algorithm Initialization ---
+        function initializeAlgorithm() {
+            if (!currentAlgorithm || !graphData) return false;
+            isAlgorithmRunning = true; isWaitingForUserInput = false; btnStart.disabled = true; algoButtons.forEach(btn => btn.disabled = true);
+            btnLoadRandom.disabled = true; startNodeInput.disabled = true; hardModeToggle.disabled = true; hideOverlay(); clearHighlights(); clearActionButtons();
+            graphData.nodes.forEach(node => { updateNodeAppearance(node.id, NODE_COLOR); updateNodeDistanceText(node.id, ''); });
+            graphData.edges.forEach(edge => updateEdgeAppearance(edge.id, EDGE_COLOR, 2));
+            const startNodeId = startNodeInput.value.trim(); const startNode = graphData.nodes.find(n => n.id === startNodeId);
+            algorithmState = { visited: new Set(), currentNode: null, stepsTaken: 0, complete: false, path: [], mstEdges: [], mstWeight: 0, score: 0, mistakes: 0, stack: [], queue: [], sortedEdges: [], edgeIndex: 0, dsuParent: {}, pq: [], inMST: new Set(), distances: {}, previousNodes: {} };
+            let initSuccess = false; const requiresStartNode = ['dfs', 'bfs', 'prim', 'dijkstra'].includes(currentAlgorithm);
+             if (requiresStartNode && !startNode) { updateFeedback(`Error: Start node "${startNodeId}" not found in graph.`, 'error'); resetState(); return false; }
+            switch(currentAlgorithm) {
+                case 'dfs': algorithmState.stack = [startNodeId]; algorithmState.visited.add(startNodeId); algorithmState.path.push(startNodeId); updateNodeAppearance(startNodeId, NODE_VISITING_COLOR); initSuccess = true; break;
+                case 'bfs': algorithmState.queue = [startNodeId]; algorithmState.visited.add(startNodeId); algorithmState.path.push(startNodeId); updateNodeAppearance(startNodeId, NODE_VISITING_COLOR); initSuccess = true; break;
+                case 'kruskal': algorithmState.sortedEdges = [...graphData.edges].sort((a, b) => a.weight - b.weight); graphData.nodes.forEach(node => algorithmState.dsuParent[node.id] = node.id); algorithmState.edgeIndex = 0; initSuccess = true; break;
+                case 'prim': algorithmState.inMST.add(startNodeId); updateNodeAppearance(startNodeId, NODE_VISITED_COLOR); graphData.edges.forEach(edge => { if (edge.source === startNodeId || edge.target === startNodeId) { addToPriorityQueue(algorithmState.pq, edge); } }); initSuccess = true; break;
+                case 'dijkstra': graphData.nodes.forEach(node => { algorithmState.distances[node.id] = (node.id === startNodeId) ? 0 : Infinity; algorithmState.previousNodes[node.id] = null; updateNodeDistanceText(node.id, algorithmState.distances[node.id]); }); algorithmState.pq = [{ nodeId: startNodeId, distance: 0 }]; algorithmState.visited = new Set(); updateNodeAppearance(startNodeId, NODE_VISITING_COLOR); initSuccess = true; break;
+                 default: updateFeedback("Error: Unknown algorithm selected.", 'error'); resetState(); return false;
+            }
+            if(initSuccess) { updateFeedback(`Algorithm ${currentAlgorithm.toUpperCase()} initialized. Mode: ${isHardMode ? 'Hard' : 'Normal'}.`, 'info'); updateDataStructureView(); updateAlgorithmStateView(); promptNextAction(); }
+            return initSuccess;
+        }
+
+        // --- Gamified Step Logic ---
+        function promptNextAction() {
+            if (!isAlgorithmRunning || algorithmState.complete) { updateFeedback(algorithmState.complete ? "Algorithm finished!" : "Cannot prompt, algorithm not running.", 'info'); if (algorithmState.complete) { showOverlay(`Algorithm Complete!\nScore: ${algorithmState.score}, Mistakes: ${algorithmState.mistakes}`); updateDataStructureView(); updateAlgorithmStateView(); } clearActionButtons(); return; }
+            isWaitingForUserInput = true; clearHighlights(); clearActionButtons(); let promptMsg = ""; expectedAction = { type: null, correctChoice: null, options: [], data: {} };
+            try {
+                switch(currentAlgorithm) {
+                    case 'dfs': promptMsg = prepareDfsStep(); break;
+                    case 'bfs': promptMsg = prepareBfsStep(); break;
+                    case 'kruskal': promptMsg = prepareKruskalsStep(); break;
+                    case 'prim': promptMsg = preparePrimsStep(); break;
+                    case 'dijkstra': promptMsg = prepareDijkstraStep(); break;
+                    default: promptMsg = "No prompt available for this algorithm yet."; algorithmState.complete = true;
+                }
+                 if (algorithmState.complete) { isWaitingForUserInput = false; updateFeedback(promptMsg, 'info'); showOverlay(`Algorithm Complete!\nScore: ${algorithmState.score}, Mistakes: ${algorithmState.mistakes}`); } else { updateFeedback(promptMsg, 'prompt'); highlightOptions(); }
+                updateDataStructureView(); updateAlgorithmStateView();
+            } catch (error) { updateFeedback(`An error occurred while preparing the next step: ${error.message}`, 'error'); console.error("Prompt Step Error:", error); resetState(); }
+        }
+
+        // --- Prepare Step Functions ---
+        function prepareDfsStep() {
+            const stack = algorithmState.stack; if (stack.length === 0) { algorithmState.complete = true; expectedAction = { type: 'complete' }; return "DFS Complete. Stack is empty."; }
+            const u = stack[stack.length - 1]; updateNodeAppearance(u, NODE_VISITING_COLOR); const neighbors = getNeighbors(u); const unvisitedNeighbors = neighbors.filter(v => !algorithmState.visited.has(v));
+            if (unvisitedNeighbors.length > 0) { expectedAction.type = 'dfs_visit_neighbor'; expectedAction.correctChoice = unvisitedNeighbors; expectedAction.options = unvisitedNeighbors; return `DFS: Currently at node ${u}. Click the correct unvisited neighbor to push onto the stack.`; } else { expectedAction.type = 'dfs_backtrack'; expectedAction.correctChoice = u; expectedAction.options = [u]; return `DFS: Node ${u} has no unvisited neighbors. Click node ${u} again to backtrack (pop from stack).`; }
+        }
+        function prepareBfsStep() {
+            const queue = algorithmState.queue; if (queue.length === 0) { algorithmState.complete = true; expectedAction = { type: 'complete' }; return "BFS Complete. Queue is empty."; }
+            const u = queue[0]; updateNodeAppearance(u, NODE_VISITING_COLOR); expectedAction.type = 'bfs_dequeue'; expectedAction.correctChoice = u; expectedAction.options = [u]; return `BFS: Node ${u} is at the front of the queue. Click it to dequeue and process neighbors.`;
+        }
+         function prepareKruskalsStep() {
+            const edges = algorithmState.sortedEdges; const mstEdges = algorithmState.mstEdges; const numNodes = graphData.nodes.length; if (mstEdges.length === numNodes - 1 || algorithmState.edgeIndex >= edges.length) { algorithmState.complete = true; expectedAction = { type: 'complete' }; mstEdges.forEach(edge => updateEdgeAppearance(edge.id, MST_EDGE_COLOR, 3, 'mst-edge')); return `Kruskal's Complete. Found ${mstEdges.length} edges. Total Weight: ${algorithmState.mstWeight}.`; }
+            const edge = edges[algorithmState.edgeIndex]; if (!isHardMode) { updateEdgeAppearance(edge.id, EDGE_CONSIDERING_COLOR, 4, 'considering-edge'); }
+            expectedAction.type = 'kruskal_consider_edge'; expectedAction.correctChoice = edge.id; expectedAction.options = [edge.id]; expectedAction.data = { edge: edge }; return `Kruskal's: Next edge to consider is ${edge.source}-${edge.target} (w: ${edge.weight}). Click the correct edge.`;
+        }
+         function preparePrimsStep() {
+             const pq = algorithmState.pq; const inMST = algorithmState.inMST; const numNodes = graphData.nodes.length; if (inMST.size === numNodes) { algorithmState.complete = true; expectedAction = { type: 'complete' }; return `Prim's Complete. Added ${inMST.size} nodes. Total Weight: ${algorithmState.mstWeight}.`; }
+             let minValidResult = findMinValidPrimEdge(pq, inMST); while (minValidResult.edge && inMST.has(minValidResult.edge.source) && inMST.has(minValidResult.edge.target)) { console.log(`Prim's: Discarding invalid edge ${minValidResult.edge.id} (both nodes in MST)`); pq.splice(minValidResult.index, 1); minValidResult = findMinValidPrimEdge(pq, inMST); } const minValidEdge = minValidResult.edge;
+             if (!minValidEdge) { algorithmState.complete = true; expectedAction = { type: 'complete' }; const message = pq.length === 0 && inMST.size < numNodes ? `Prim's cannot continue (graph might be disconnected?). MST has ${inMST.size} nodes.` : `Prim's Complete. Added ${inMST.size} nodes. Total Weight: ${algorithmState.mstWeight}.`; return message; }
+             if (!isHardMode) { updateEdgeAppearance(minValidEdge.id, EDGE_CONSIDERING_COLOR, 4, 'considering-edge'); }
+             expectedAction.type = 'prim_select_edge'; expectedAction.correctChoice = minValidEdge.id; expectedAction.options = [minValidEdge.id]; expectedAction.data = { edge: minValidEdge }; return `Prim's: Select the minimum weight edge connecting the MST (green nodes) to an outside node. Click the correct edge (${minValidEdge.source}-${minValidEdge.target}, w: ${minValidEdge.weight}).`;
+         }
+        function prepareDijkstraStep() {
+            const pq = algorithmState.pq; const visited = algorithmState.visited; const { node: minNode, index: minIndex } = findMinValidDijkstraNode(pq, visited);
+            if (!minNode) { algorithmState.complete = true; expectedAction = { type: 'complete' }; return "Dijkstra's Complete. All reachable nodes visited."; }
+            if (!isHardMode) { updateNodeAppearance(minNode.nodeId, NODE_HIGHLIGHT_COLOR, 'selectable-node'); } else { updateNodeAppearance(minNode.nodeId, NODE_VISITING_COLOR); }
+            expectedAction.type = 'dijkstra_select_node'; expectedAction.correctChoice = minNode.nodeId; expectedAction.options = [minNode.nodeId]; expectedAction.data = { node: minNode, index: minIndex }; return `Dijkstra's: Select the unvisited node with the smallest distance (${minNode.nodeId} with dist ${minNode.distance}). Click the correct node.`;
+        }
+
+        // --- User Action Handling ---
+        function handleUserAction(selectedId, itemType) {
+            if (!isWaitingForUserInput || !isAlgorithmRunning || algorithmState.complete) return;
+            let correct = false; let feedbackMsg = ""; let actionTaken = false; let proceed = false;
+            clearIncorrectHighlights();
+            // --- DFS ---
+            if (expectedAction.type === 'dfs_visit_neighbor' && itemType === 'node') { actionTaken = true; if (expectedAction.correctChoice.includes(selectedId)) { correct = true; const u = algorithmState.stack[algorithmState.stack.length - 1]; algorithmState.visited.add(selectedId); algorithmState.stack.push(selectedId); algorithmState.path.push(selectedId); feedbackMsg = `Correct! Pushed ${selectedId} onto the stack.`; proceed = true; } else { const neighbors = getNeighbors(algorithmState.stack[algorithmState.stack.length - 1]); if (neighbors.includes(selectedId)) { feedbackMsg = `Incorrect. Node ${selectedId} has already been visited. Try another neighbor.`; } else { feedbackMsg = `Incorrect. ${selectedId} is not an unvisited neighbor of ${algorithmState.stack[algorithmState.stack.length - 1]}.`; } highlightIncorrectSelection(`node-${selectedId}`); } }
+            else if (expectedAction.type === 'dfs_backtrack' && itemType === 'node') { actionTaken = true; if (expectedAction.correctChoice === selectedId) { correct = true; const poppedNode = algorithmState.stack.pop(); updateNodeAppearance(poppedNode, NODE_VISITED_COLOR); feedbackMsg = `Correct! Backtracking from ${poppedNode}.`; proceed = true; } else { feedbackMsg = `Incorrect. To backtrack from ${expectedAction.correctChoice}, click on node ${expectedAction.correctChoice}.`; highlightIncorrectSelection(`node-${selectedId}`); } }
+            // --- BFS ---
+            else if (expectedAction.type === 'bfs_dequeue' && itemType === 'node') { actionTaken = true; if (expectedAction.correctChoice === selectedId) { correct = true; const u = algorithmState.queue.shift(); updateNodeAppearance(u, NODE_VISITED_COLOR); let neighborsAdded = []; const neighbors = getNeighbors(u); for (const v of neighbors) { if (!algorithmState.visited.has(v)) { algorithmState.visited.add(v); algorithmState.queue.push(v); algorithmState.path.push(v); neighborsAdded.push(v); updateNodeAppearance(v, NODE_VISITING_COLOR); } } feedbackMsg = `Correct! Dequeued ${u}. Enqueued neighbors: ${neighborsAdded.length > 0 ? neighborsAdded.join(', ') : 'None'}.`; proceed = true; } else { feedbackMsg = `Incorrect. Node ${expectedAction.correctChoice} is at the front of the queue. Click it to dequeue.`; highlightIncorrectSelection(`node-${selectedId}`); } }
+            // --- Kruskal's (Consider Edge) ---
+             else if (expectedAction.type === 'kruskal_consider_edge' && itemType === 'edge') { actionTaken = true; if (expectedAction.correctChoice === selectedId) { correct = true; const edge = expectedAction.data.edge; const u = edge.source; const v = edge.target; const formsCycle = findSet(algorithmState.dsuParent, u) === findSet(algorithmState.dsuParent, v); expectedAction.type = 'kruskal_confirm_add'; expectedAction.correctChoice = !formsCycle; expectedAction.data = { edge: edge }; feedbackMsg = `Correct edge selected. Does adding edge ${u}-${v} (w: ${edge.weight}) form a cycle? Click Yes or No.`; updateFeedback(feedbackMsg, 'prompt'); createActionButtons(handleKruskalConfirmation); } else { feedbackMsg = `Incorrect. The next edge to consider is ${expectedAction.correctChoice}. Click the correct edge.`; highlightIncorrectSelection(selectedId); } }
+            // --- Prim's ---
+             else if (expectedAction.type === 'prim_select_edge' && itemType === 'edge') { actionTaken = true; if (expectedAction.correctChoice === selectedId) { correct = true; const edgeToAdd = expectedAction.data.edge; const u = edgeToAdd.source; const v = edgeToAdd.target; const newNode = algorithmState.inMST.has(u) ? v : u; const edgeIndexInPQ = algorithmState.pq.findIndex(e => e.id === edgeToAdd.id); if (edgeIndexInPQ > -1) { algorithmState.pq.splice(edgeIndexInPQ, 1); } algorithmState.inMST.add(newNode); algorithmState.mstEdges.push(edgeToAdd); algorithmState.mstWeight += edgeToAdd.weight; updateNodeAppearance(newNode, NODE_VISITED_COLOR); updateEdgeAppearance(edgeToAdd.id, MST_EDGE_COLOR, 3, 'mst-edge', 'considering-edge'); let edgesAddedToPQ = 0; graphData.edges.forEach(neighborEdge => { let neighborNode = null; if (neighborEdge.source === newNode && !algorithmState.inMST.has(neighborEdge.target)) { neighborNode = neighborEdge.target; } else if (neighborEdge.target === newNode && !algorithmState.inMST.has(neighborEdge.source)) { neighborNode = neighborEdge.source; } if (neighborNode) { addToPriorityQueue(algorithmState.pq, neighborEdge); edgesAddedToPQ++; } }); feedbackMsg = `Correct! Added edge ${u}-${v} (w: ${edgeToAdd.weight}). Added node ${newNode} to MST. Added ${edgesAddedToPQ} edge(s) to PQ.`; proceed = true; } else { const clickedEdgeData = graphData.edges.find(e => e.id === selectedId); const isInPQ = algorithmState.pq.some(e => e.id === selectedId); if (isInPQ && clickedEdgeData) { feedbackMsg = `Incorrect. Edge ${clickedEdgeData.source}-${clickedEdgeData.target} (w: ${clickedEdgeData.weight}) is in the PQ, but not the minimum weight valid edge.`; } else if (clickedEdgeData){ feedbackMsg = `Incorrect. Edge ${clickedEdgeData.source}-${clickedEdgeData.target} is not the minimum weight valid edge required by Prim's.`; } else { feedbackMsg = `Incorrect edge selected for Prim's.`; } highlightIncorrectSelection(selectedId); } }
+            // --- Dijkstra ---
+            else if (expectedAction.type === 'dijkstra_select_node' && itemType === 'node') {
+                actionTaken = true; if (expectedAction.correctChoice === selectedId) { correct = true; const uData = expectedAction.data.node; const u = uData.nodeId; algorithmState.visited.add(u); updateNodeAppearance(u, NODE_VISITED_COLOR); updateNodeDistanceText(u, algorithmState.distances[u]); let neighborsUpdated = []; const edgesOfU = graphData.edges.filter(edge => edge.source === u || edge.target === u); for (const edge of edgesOfU) { const v = (edge.source === u) ? edge.target : edge.source; if (!algorithmState.visited.has(v)) { const weight = edge.weight; const currentDistU = algorithmState.distances[u]; const newDistV = currentDistU + weight; if (newDistV < algorithmState.distances[v]) { algorithmState.distances[v] = newDistV; algorithmState.previousNodes[v] = u; algorithmState.pq.push({ nodeId: v, distance: newDistV }); neighborsUpdated.push(v); updateNodeDistanceText(v, newDistV); updateEdgeAppearance(edge.id, DIJKSTRA_PATH_EDGE_COLOR, 3, 'dijkstra-path-edge'); } } } feedbackMsg = `Correct! Selected node ${u}. Updated distances for neighbors: ${neighborsUpdated.length > 0 ? neighborsUpdated.join(', ') : 'None'}.`; proceed = true; } else { feedbackMsg = `Incorrect. The unvisited node with the smallest distance is ${expectedAction.correctChoice}.`; highlightIncorrectSelection(`node-${selectedId}`); }
+            }
+            // --- Update score and state ---
+            if (!actionTaken) { console.log("Irrelevant click ignored."); return; }
+            if (correct && proceed) { algorithmState.score += 10; algorithmState.stepsTaken++; isWaitingForUserInput = false; updateFeedback(feedbackMsg, 'success'); updateDataStructureView(); updateAlgorithmStateView(); setTimeout(promptNextAction, 1200); }
+            else if (correct && !proceed) { /* Waiting for Kruskal Yes/No */ }
+            else { algorithmState.mistakes++; algorithmState.score -= 5; updateFeedback(feedbackMsg, 'error'); updateAlgorithmStateView(); }
+        }
+
+        // --- Kruskal's Confirmation Handler ---
+        function handleKruskalConfirmation(userChoseYes) {
+             if (!isWaitingForUserInput || expectedAction.type !== 'kruskal_confirm_add') return; const correctChoice = expectedAction.correctChoice; const edge = expectedAction.data.edge; let feedbackMsg = ""; let correct = (userChoseYes === correctChoice); let proceed = false; clearActionButtons();
+             if (correct) { algorithmState.score += 10; if (userChoseYes) { algorithmState.mstEdges.push(edge); algorithmState.mstWeight += edge.weight; unionSets(algorithmState.dsuParent, edge.source, edge.target); updateEdgeAppearance(edge.id, MST_EDGE_COLOR, 3, 'mst-edge', 'considering-edge'); feedbackMsg = `Correct! Added edge ${edge.source}-${edge.target} (w: ${edge.weight}) to MST.`; } else { updateEdgeAppearance(edge.id, EDGE_COLOR, 2, null, 'considering-edge'); feedbackMsg = `Correct! Discarded edge ${edge.source}-${edge.target} (w: ${edge.weight}) as it forms a cycle.`; } algorithmState.edgeIndex++; proceed = true; updateFeedback(feedbackMsg, 'success');
+             } else { algorithmState.mistakes++; algorithmState.score -= 5; if (userChoseYes) { feedbackMsg = `Incorrect. Adding edge ${edge.source}-${edge.target} would form a cycle. It should be discarded.`; } else { feedbackMsg = `Incorrect. Edge ${edge.source}-${edge.target} does not form a cycle and should be added to the MST.`; } updateFeedback(feedbackMsg, 'error'); algorithmState.edgeIndex++; proceed = true; if (!algorithmState.mstEdges.some(e => e.id === edge.id)) { updateEdgeAppearance(edge.id, EDGE_COLOR, 2, null, 'considering-edge'); } }
+             if (proceed) { isWaitingForUserInput = false; algorithmState.stepsTaken++; updateDataStructureView(); updateAlgorithmStateView(); setTimeout(promptNextAction, 1200); }
+        }
+
+        // --- Dynamic Button Helpers ---
+        function createActionButtons(handler) { clearActionButtons(); const btnYes = document.createElement('button'); btnYes.textContent = 'Yes'; btnYes.classList.add('action-button', 'action-button-yes'); btnYes.onclick = () => handler(true); const btnNo = document.createElement('button'); btnNo.textContent = 'No'; btnNo.classList.add('action-button', 'action-button-no'); btnNo.onclick = () => handler(false); actionButtonsArea.appendChild(btnYes); actionButtonsArea.appendChild(btnNo); }
+        function clearActionButtons() { actionButtonsArea.innerHTML = ''; }
+
+        // --- Visual Update Helpers ---
+        function updateNodeAppearance(nodeId, color, addClass = null, removeClass = null) { const nodeGroup = graphCanvas.querySelector(`#node-${nodeId}`); const circle = nodeGroup?.querySelector('circle'); if (circle) { circle.setAttribute('fill', color); } if(nodeGroup) { if(removeClass) nodeGroup.classList.remove(removeClass); if(addClass) nodeGroup.classList.add(addClass); } }
+        function updateEdgeAppearance(edgeId, color, strokeWidth = 2, addClass = null, removeClass = null) { const edgeElement = graphCanvas.querySelector(`#${edgeId}`); if (edgeElement) { edgeElement.setAttribute('stroke', color); edgeElement.setAttribute('stroke-width', strokeWidth); if(removeClass) edgeElement.classList.remove(removeClass); if(addClass && !edgeElement.classList.contains(addClass)) edgeElement.classList.add(addClass); if (addClass === 'mst-edge' || addClass === 'considering-edge' || addClass === 'selectable-edge' || addClass === 'dijkstra-path-edge') { const edgeGroup = graphCanvas.querySelector('#edge-group'); if (edgeGroup) { edgeGroup.appendChild(edgeElement); } } } }
+        function clearHighlights() { graphCanvas.querySelectorAll('.selectable-node, .selectable-edge, .considering-edge').forEach(el => { el.classList.remove('selectable-node', 'selectable-edge', 'considering-edge'); const circle = el.querySelector('circle'); if (circle) { circle.setAttribute('stroke', '#333'); circle.setAttribute('stroke-width', '1'); } else if (el.tagName === 'line') { const edgeId = el.id; const isMSTEdge = algorithmState.mstEdges?.some(e => e.id === edgeId); const isDijkstraPathEdge = el.classList.contains('dijkstra-path-edge'); if (isMSTEdge) { el.setAttribute('stroke', MST_EDGE_COLOR); el.setAttribute('stroke-width', 3); } else if (isDijkstraPathEdge) { el.setAttribute('stroke', DIJKSTRA_PATH_EDGE_COLOR); el.setAttribute('stroke-width', 3); } else { el.setAttribute('stroke', EDGE_COLOR); el.setAttribute('stroke-width', 2); } } }); clearIncorrectHighlights(); }
+        function highlightOptions() { if (isHardMode) { console.log("Hard mode enabled, skipping option highlighting."); return; } if (!expectedAction.options) return; expectedAction.options.forEach(optionId => { let element = null; let isEdge = false; if (expectedAction.type.includes('dfs') || expectedAction.type.includes('bfs') || expectedAction.type.includes('dijkstra')) { element = graphCanvas.querySelector(`#node-${optionId}`); } else if (expectedAction.type.includes('kruskal') || expectedAction.type.includes('prim')) { element = graphCanvas.querySelector(`#${optionId}`); isEdge = true; } if (element) { if (isEdge) { element.classList.add('selectable-edge'); const edgeGroup = graphCanvas.querySelector('#edge-group'); if (edgeGroup) edgeGroup.appendChild(element); } else { element.classList.add('selectable-node'); const nodeGroup = graphCanvas.querySelector('#node-group'); if (nodeGroup) nodeGroup.appendChild(element); } } }); }
+        function highlightIncorrectSelection(elementId) { const element = graphCanvas.querySelector(`#${elementId}`); if (element) { element.classList.add('incorrect-selection'); setTimeout(() => { element.classList.remove('incorrect-selection'); }, 800); } }
+        function clearIncorrectHighlights() { graphCanvas.querySelectorAll('.incorrect-selection').forEach(el => { el.classList.remove('incorrect-selection'); }); }
+
+        // --- Event Handlers ---
+        function handleLoadRandomGraph() { console.log("handleLoadRandomGraph called."); try { graphData = generateRandomGraph(); if (graphData) { console.log("handleLoadRandomGraph: Graph generated, resetting state and drawing."); resetState(); drawGraph(); updateFeedback("Random graph loaded. Select an algorithm and start node (if needed), then click 'Start'."); btnStart.disabled = true; currentAlgorithm = null; algoButtons.forEach(btn => btn.classList.remove('ring-2', 'ring-offset-2', 'ring-indigo-500')); startNodeInput.value = ''; } else { console.error("handleLoadRandomGraph: generateRandomGraph returned null or invalid data."); updateFeedback("Failed to generate random graph. Check console.", 'error'); } } catch (error) { console.error("Error in handleLoadRandomGraph:", error); updateFeedback("An error occurred while loading the graph. Check console.", 'error'); } }
+        function handleAlgorithmSelection(event) { currentAlgorithm = event.target.id.split('-')[1]; algoButtons.forEach(btn => btn.classList.remove('ring-2', 'ring-offset-2', 'ring-indigo-500')); event.target.classList.add('ring-2', 'ring-offset-2', 'ring-indigo-500'); const requiresStartNode = ['dfs', 'bfs', 'prim', 'dijkstra'].includes(currentAlgorithm); startNodeInput.disabled = !requiresStartNode; startNodeInput.required = requiresStartNode; if (!requiresStartNode) startNodeInput.value = ''; if (graphData) { btnStart.disabled = false; updateFeedback(`Algorithm ${currentAlgorithm.toUpperCase()} selected. ${requiresStartNode ? "Enter start node and click 'Start'." : "Click 'Start'."}`); } else { updateFeedback(`Algorithm ${currentAlgorithm.toUpperCase()} selected. Load a graph first.`); btnStart.disabled = true; } resetAlgorithmVisuals(); updateAlgorithmDescription(currentAlgorithm); isAlgorithmRunning = false; isWaitingForUserInput = false; }
+        function handleStartAlgorithm() { if (!currentAlgorithm) { updateFeedback("Please select an algorithm first.", 'error'); return; } if (!graphData) { updateFeedback("Please load a graph first.", 'error'); return; } const requiresStartNode = ['dfs', 'bfs', 'prim', 'dijkstra'].includes(currentAlgorithm); if (requiresStartNode && !startNodeInput.value.trim()) { updateFeedback("Please enter a start node for this algorithm.", 'error'); return; } initializeAlgorithm(); }
+        function handleReset() { resetState(); if (graphData) { drawGraph(); updateFeedback("State reset. Select an algorithm and start node (if needed)."); } else { updateFeedback("State reset. Load a graph to begin."); } updateAlgorithmDescription(); hideOverlay(); }
+        function handleNodeClick(nodeId) { console.log(`Node clicked: ${nodeId} | isWaiting: ${isWaitingForUserInput} | isRunning: ${isAlgorithmRunning}`); if (!isAlgorithmRunning && graphData) { const requiresStartNode = ['dfs', 'bfs', 'prim', 'dijkstra'].includes(currentAlgorithm); if(requiresStartNode) startNodeInput.value = nodeId; } else if (isWaitingForUserInput) { handleUserAction(nodeId, 'node'); } else if (isAlgorithmRunning) { updateFeedback("Please wait for the current step to complete or for a prompt.", 'info'); } }
+        function handleEdgeClick(edge) { console.log(`Edge clicked: ${edge.id} | isWaiting: ${isWaitingForUserInput} | isRunning: ${isAlgorithmRunning}`); if (isWaitingForUserInput) { handleUserAction(edge.id, 'edge'); } else if(isAlgorithmRunning) { updateFeedback("Please wait for the current step to complete or for a prompt.", 'info'); } }
+
+        // --- State Management ---
+         function resetAlgorithmVisuals() { if (!graphData) return; graphData.nodes.forEach(node => { const nodeElement = graphCanvas.querySelector(`#node-${node.id}`); if(nodeElement) nodeElement.classList.remove('selectable-node'); updateNodeAppearance(node.id, NODE_COLOR); updateNodeDistanceText(node.id, ''); }); graphData.edges.forEach(edge => { const edgeElement = graphCanvas.querySelector(`#${edge.id}`); if(edgeElement) edgeElement.classList.remove('selectable-edge', 'considering-edge', 'mst-edge', 'dijkstra-path-edge'); updateEdgeAppearance(edge.id, EDGE_COLOR, 2); }); clearHighlights(); clearActionButtons(); updateDataStructureView("Select an algorithm and start..."); updateAlgorithmStateView("State details will appear here."); }
+        function resetState() { currentAlgorithm = null; algorithmState = {}; isAlgorithmRunning = false; isWaitingForUserInput = false; expectedAction = { type: null, correctChoice: null, options: [], data: {} }; algoButtons.forEach(btn => { btn.classList.remove('ring-2', 'ring-offset-2', 'ring-indigo-500'); btn.disabled = false; }); btnStart.disabled = !graphData; btnLoadRandom.disabled = false; startNodeInput.disabled = false; hardModeToggle.disabled = false; resetAlgorithmVisuals(); updateAlgorithmDescription(); hideOverlay(); }
+
+        // --- Helper to get neighbors ---
+        function getNeighbors(nodeId) { if (!graphData || !graphData.edges) return []; const neighbors = new Set(); graphData.edges.forEach(edge => { if (edge.source === nodeId) { neighbors.add(edge.target); } else if (edge.target === nodeId) { neighbors.add(edge.source); } }); return Array.from(neighbors); }
+
+        // --- Initialization ---
+        window.onload = () => {
+            console.log("Window loaded. Attaching event listeners.");
+            try {
+                if(btnLoadRandom) btnLoadRandom.addEventListener('click', handleLoadRandomGraph); else console.error("btnLoadRandom not found!");
+                if(btnReset) btnReset.addEventListener('click', handleReset); else console.error("btnReset not found!");
+                if(btnStart) btnStart.addEventListener('click', handleStartAlgorithm); else console.error("btnStart not found!");
+                if(algoButtons && algoButtons.length > 0) { algoButtons.forEach(button => button.addEventListener('click', handleAlgorithmSelection)); console.log(`Attached listeners to ${algoButtons.length} algo buttons.`); } else console.error("Algorithm buttons not found!");
+                if (hardModeToggle) { hardModeToggle.addEventListener('change', (event) => { isHardMode = event.target.checked; console.log("Hard Mode Toggled:", isHardMode); if (!isAlgorithmRunning) { updateAlgorithmStateView(); } }); console.log("Attached listener to hardModeToggle."); } else console.error("hardModeToggle not found!");
+                updateFeedback("Welcome! Load a random graph to begin."); updateAlgorithmDescription(); console.log("Initialization complete.");
+            } catch (error) { console.error("Error during initialization:", error); updateFeedback("Initialization Error. Check console.", 'error'); }
+        };
+    </script>
+
+</body>
+</html>

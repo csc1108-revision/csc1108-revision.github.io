@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lucas's HTML Games</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* Apply Inter font */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Simple hover effect for game links */
+        .game-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 min-h-screen flex items-center justify-center p-6">
+
+    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-2xl text-center">
+        <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
+            CSC-1108 Practice Games
+        </h1>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <a href="games/dsa-quiz.html"
+               class="game-link block bg-blue-500 hover:bg-blue-600 text-white font-semibold py-4 px-6 rounded-lg shadow-md transition duration-200 ease-in-out text-center">
+                DSA Quiz
+            </a>
+
+            <a href="games/kruskal-v2.html"
+               class="game-link block bg-green-500 hover:bg-green-600 text-white font-semibold py-4 px-6 rounded-lg shadow-md transition duration-200 ease-in-out text-center">
+                AlgoGraph Explorer (Kruskal's/Prim's etc.)
+            </a>
+
+            <a href="games/llrbt-game-v2.html"
+               class="game-link block bg-red-500 hover:bg-red-600 text-white font-semibold py-4 px-6 rounded-lg shadow-md transition duration-200 ease-in-out text-center">
+                LLRBT Practice Game
+            </a>
+
+            <a href="games/search-algos-game.html"
+               class="game-link block bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-4 px-6 rounded-lg shadow-md transition duration-200 ease-in-out text-center">
+                Search Algorithms Game
+            </a>
+
+            <a href="games/topological-sort-game-v2.html"
+               class="game-link block bg-purple-500 hover:bg-purple-600 text-white font-semibold py-4 px-6 rounded-lg shadow-md transition duration-200 ease-in-out text-center">
+                Topological Sort Game
+            </a>
+
+            </div>
+
+        <p class="mt-8 text-gray-500 text-sm">
+            Created with Gemini 2.5 Pro Exp | Hosted on GitHub Pages
+        </p>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLRBT Practice Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        /* Apply game font globally */
+        body, button, input, select, textarea, span, label {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.8rem;
+        }
+        h1 {
+             font-size: 1.75rem;
+        }
+        /* Canvas styling */
+        canvas {
+            background-color: #f0f0f0;
+            border: 3px solid #333;
+            display: block;
+            margin: 1rem auto;
+            max-width: 100%;
+            border-radius: 8px;
+        }
+        /* Button styling */
+        button {
+            border: 3px solid #333;
+            padding: 8px 12px;
+            margin: 4px;
+            border-radius: 8px;
+            cursor: pointer;
+            background-color: #fff;
+            color: #333;
+            transition: background-color 0.2s, color 0.2s, transform 0.1s;
+            box-shadow: 3px 3px 0px #999;
+            white-space: nowrap;
+        }
+        button:hover {
+            background-color: #e0e0e0;
+        }
+        button:active {
+            transform: translateY(2px) translateX(2px);
+            box-shadow: 1px 1px 0px #999;
+        }
+        button:disabled {
+            background-color: #ccc;
+            color: #888;
+            cursor: not-allowed;
+            box-shadow: 1px 1px 0px #777;
+        }
+        /* Specific Button Colors */
+         #check-answer-btn, #check-step-btn { background-color: #28a745; color: white; } /* Green */
+         #check-answer-btn:hover, #check-step-btn:hover { background-color: #218838; }
+         #new-challenge-btn, #insert-next-btn { background-color: #007bff; color: white; } /* Blue */
+         #new-challenge-btn:hover, #insert-next-btn:hover { background-color: #0056b3; }
+         #undo-btn { background-color: #ffc107; color: #333; } /* Yellow */
+         #undo-btn:hover { background-color: #e0a800; }
+         #hint-btn { background-color: #17a2b8; color: white; } /* Teal */
+         #hint-btn:hover { background-color: #117a8b; }
+         #show-answer-btn { background-color: #6c757d; color: white; } /* Gray */
+         #show-answer-btn:hover { background-color: #5a6268; }
+         #show-steps-btn { background-color: #fd7e14; color: white; } /* Orange */
+         #show-steps-btn:hover { background-color: #c66511; }
+         #set-root-black-btn { background-color: #343a40; color: white; } /* Dark Gray/Black */
+         #set-root-black-btn:hover { background-color: #23272b; }
+
+
+        /* Custom message box */
+        #message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            z-index: 1000;
+            display: none; /* Hidden by default */
+            font-size: 0.9em;
+            border: 2px solid white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            max-width: 90%;
+            text-align: center;
+        }
+        #message-box.success { background-color: rgba(40, 167, 69, 0.9); border-color: #c3e6cb; }
+        #message-box.error { background-color: rgba(220, 53, 69, 0.9); border-color: #f5c6cb; }
+        #message-box.info { background-color: rgba(23, 162, 184, 0.9); border-color: #bee5eb; }
+
+         /* Steps display area */
+        #steps-display {
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+            font-size: 0.8em;
+            max-height: 100px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            color: #eee;
+        }
+        #steps-display p { margin: 2px 0; }
+
+        /* Difficulty Toggle Switch */
+        .switch { position: relative; display: inline-block; width: 50px; height: 24px; margin-left: 10px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #dc3545; } /* Red for hard mode */
+        input:checked + .slider:before { transform: translateX(26px); }
+
+        /* Key list styling */
+        #key-list-container { margin-bottom: 1rem; text-align: center; }
+        #key-list span { margin: 0 5px; padding: 3px 6px; border-radius: 4px; background-color: #555; }
+        #key-list span.current-key { background-color: #ffc107; color: #333; font-weight: bold; }
+        #key-list span.inserted-key { background-color: #28a745; color: white; text-decoration: line-through; }
+
+
+    </style>
+</head>
+<body class="bg-gray-800 text-white p-5 min-h-screen flex flex-col items-center">
+
+    <h1 class="text-3xl mb-4 text-center">LLRBT Practice Game</h1>
+
+    <div class="mb-4 flex justify-center items-center space-x-6 flex-wrap">
+        <div class="flex space-x-4 mb-2 md:mb-0">
+             <button id="mode-fixup-btn">Mode 1: Fixup</button> <button id="mode-rotate-btn">Mode 2: Rotation</button>
+             <button id="mode-insert-btn">Mode 3: Insertion</button> </div>
+         <div class="flex items-center">
+             <label for="difficulty-toggle" class="mr-2">Hard Mode:</label>
+             <label class="switch">
+                 <input type="checkbox" id="difficulty-toggle">
+                 <span class="slider"></span>
+             </label>
+         </div>
+    </div>
+
+
+    <div class="w-full max-w-4xl bg-gray-700 p-6 rounded-lg shadow-lg">
+        <div id="key-list-container" style="display: none;">
+            <span>Insert Order:</span>
+            <span id="key-list"></span>
+        </div>
+
+        <div id="instructions" class="mb-4 text-center text-yellow-300 min-h-[3rem] flex items-center justify-center px-2">
+             Select a game mode to start.
+        </div>
+
+        <canvas id="llrbt-canvas" width="800" height="400"></canvas>
+
+        <div id="controls" class="mt-6 flex flex-wrap justify-center items-center gap-x-4 gap-y-2">
+            <div class="w-full flex justify-center items-center gap-4 mb-2 flex-wrap">
+                 <span class="mr-2">Selected: <span id="selected-node-value" class="font-bold text-green-400">None</span></span>
+                 <button id="rotate-left-btn" disabled>Rotate Left</button>
+                 <button id="rotate-right-btn" disabled>Rotate Right</button>
+                 <button id="flip-colors-btn" disabled>Flip Colors</button>
+                 <button id="set-root-black-btn" disabled>Set Root Black</button>
+            </div>
+             <div class="w-full flex justify-center items-center gap-4 flex-wrap">
+                 <button id="undo-btn" disabled>Undo</button>
+                 <button id="hint-btn" disabled>Hint</button>
+                 <button id="show-answer-btn" disabled>Show Answer</button>
+                 <button id="show-steps-btn" disabled>Show Steps</button>
+                 <button id="check-step-btn" style="display: none;">Check Step</button>
+                 <button id="check-answer-btn" >Check Answer</button>
+                 <button id="insert-next-btn" style="display: none;">Insert Next</button>
+                 <button id="new-challenge-btn">New Challenge</button>
+             </div>
+        </div>
+         <div id="steps-display" class="mt-4" style="display: none;"></div>
+    </div>
+
+    <div id="message-box"></div>
+
+    <script>
+        // --- Constants ---
+        const RED = true;
+        const BLACK = false;
+        const NODE_RADIUS = 18;
+        const HORIZONTAL_SPACING = 45;
+        const VERTICAL_SPACING = 55;
+        const HISTORY_LIMIT = 10;
+        const ANIMATION_DURATION = 500;
+
+        // --- DOM Elements ---
+        const canvas = document.getElementById('llrbt-canvas');
+        const ctx = canvas.getContext('2d');
+        const instructionsDiv = document.getElementById('instructions');
+        const selectedNodeValueSpan = document.getElementById('selected-node-value');
+        const rotateLeftBtn = document.getElementById('rotate-left-btn');
+        const rotateRightBtn = document.getElementById('rotate-right-btn');
+        const flipColorsBtn = document.getElementById('flip-colors-btn');
+        const setRootBlackBtn = document.getElementById('set-root-black-btn');
+        const checkAnswerBtn = document.getElementById('check-answer-btn');
+        const checkStepBtn = document.getElementById('check-step-btn');
+        const insertNextBtn = document.getElementById('insert-next-btn');
+        const newChallengeBtn = document.getElementById('new-challenge-btn');
+        const modeFixupBtn = document.getElementById('mode-fixup-btn');
+        const modeRotateBtn = document.getElementById('mode-rotate-btn');
+        const modeInsertBtn = document.getElementById('mode-insert-btn');
+        const messageBox = document.getElementById('message-box');
+        const undoBtn = document.getElementById('undo-btn');
+        const hintBtn = document.getElementById('hint-btn');
+        const showAnswerBtn = document.getElementById('show-answer-btn');
+        const showStepsBtn = document.getElementById('show-steps-btn');
+        const stepsDisplayDiv = document.getElementById('steps-display');
+        const allButtons = document.querySelectorAll('#controls button');
+        const difficultyToggle = document.getElementById('difficulty-toggle');
+        const keyListContainer = document.getElementById('key-list-container');
+        const keyListSpan = document.getElementById('key-list');
+
+
+        // --- Game State ---
+        let root = null;
+        let correctRoot = null;
+        let selectedNode = null;
+        let gameMode = null;
+        let history = [];
+        let correctSteps = [];
+        let challengeActive = false;
+        let isAnimating = false;
+        let animationFrameId = null;
+        let difficulty = 'normal';
+        let keysToInsert = [];
+        let currentKeyIndex = -1;
+        let lastInsertedNodeKey = null;
+
+
+        // --- LLRBT Node Class ---
+        class Node {
+             constructor(key, color = RED) { /* ... content skipped ... */
+                this.key = key; this.color = color; this.left = null; this.right = null;
+                this.x = 0; this.y = 0; this.targetX = 0; this.targetY = 0; this.isHint = false;
+             }
+        }
+
+        // --- LLRBT Core Operations --- (No changes)
+        function isRed(node) { return node ? node.color === RED : false; }
+        function rotateLeft(h) { /* ... */
+            if (!h || !h.right) return h; const x = h.right; h.right = x.left; x.left = h;
+            x.color = h.color; h.color = RED; return x;
+        }
+        function rotateRight(h) { /* ... */
+             if (!h || !h.left) return h; const x = h.left; h.left = x.right; x.right = h;
+             x.color = h.color; h.color = RED; return x;
+        }
+        function flipColors(h) { /* ... */
+            if (!h || !h.left || !h.right) return; h.color = !h.color;
+            h.left.color = !h.left.color; h.right.color = !h.right.color;
+        }
+
+        // --- LLRBT Insertion (Full LLRBT logic) ---
+        function insertLLRBT(node, key, steps = null) { /* ... content skipped ... */
+            if (node === null) return new Node(key, RED);
+            if (key < node.key) node.left = insertLLRBT(node.left, key, steps);
+            else if (key > node.key) node.right = insertLLRBT(node.right, key, steps);
+            if (isRed(node.right) && !isRed(node.left)) { if (steps) steps.push(`Rotate Left at ${node.key}`); node = rotateLeft(node); }
+            if (isRed(node.left) && isRed(node.left.left)) { if (steps) steps.push(`Rotate Right at ${node.key}`); node = rotateRight(node); }
+            if (isRed(node.left) && isRed(node.right)) { if (steps) steps.push(`Flip Colors at ${node.key}`); flipColors(node); }
+            return node;
+        }
+
+        // --- Simple BST Insertion (No fixups, new node is RED) ---
+        function bstInsert(node, key) { /* ... content skipped ... */
+             if (node === null) { lastInsertedNodeKey = key; return new Node(key, RED); }
+             if (key < node.key) node.left = bstInsert(node.left, key);
+             else if (key > node.key) node.right = bstInsert(node.right, key);
+             return node;
+        }
+
+
+        // --- Tree Drawing Functions --- (No changes)
+        function getAllNodes(node, nodes = []) { /* ... */
+             if (!node) return nodes; nodes.push(node); getAllNodes(node.left, nodes); getAllNodes(node.right, nodes); return nodes;
+        }
+        function calculateLayoutPositions(node, x, y, horizontalGap) { /* ... */
+            if (!node) return { width: 0, positions: {} }; let positions = {}; let leftInfo = { width: 0, positions: {} };
+            let rightInfo = { width: 0, positions: {} }; let currentHorizontalGap = Math.max(horizontalGap, HORIZONTAL_SPACING);
+            if (node.left) leftInfo = calculateLayoutPositions(node.left, x, y + VERTICAL_SPACING, currentHorizontalGap / 2);
+            if (node.right) rightInfo = calculateLayoutPositions(node.right, x + leftInfo.width + (leftInfo.width > 0 ? currentHorizontalGap : 0), y + VERTICAL_SPACING, currentHorizontalGap / 2);
+            let nodeX;
+            if (node.left && node.right) { const leftChildX = leftInfo.positions[node.left.key]?.x ?? x; const rightChildX = rightInfo.positions[node.right.key]?.x ?? (x + leftInfo.width + currentHorizontalGap); nodeX = (leftChildX + rightChildX) / 2; }
+            else if (node.left) { const leftChildX = leftInfo.positions[node.left.key]?.x ?? x; nodeX = leftChildX + currentHorizontalGap / 1.5; }
+            else if (node.right) { const rightChildX = rightInfo.positions[node.right.key]?.x ?? x; nodeX = rightChildX - currentHorizontalGap / 1.5; }
+            else { nodeX = x + NODE_RADIUS; }
+            positions[node.key] = { x: nodeX, y: y }; Object.assign(positions, leftInfo.positions, rightInfo.positions);
+            let totalWidth = Math.max(NODE_RADIUS * 2, leftInfo.width + rightInfo.width + (leftInfo.width > 0 && rightInfo.width > 0 ? currentHorizontalGap : 0));
+            return { width: totalWidth, positions: positions };
+        }
+        function applyPositions(rootNode, positionMap) { /* ... */
+             if (!rootNode) return; const nodePos = positionMap[rootNode.key]; if (nodePos) { rootNode.x = nodePos.x; rootNode.y = nodePos.y; }
+             applyPositions(rootNode.left, positionMap); applyPositions(rootNode.right, positionMap);
+        }
+        function drawNode(node) { /* ... */
+            if (!node) return; ctx.beginPath(); ctx.arc(node.x, node.y, NODE_RADIUS, 0, Math.PI * 2);
+            ctx.fillStyle = isRed(node) ? '#dc3545' : '#343a40'; ctx.fill(); ctx.strokeStyle = isRed(node) ? '#343a40' : '#ffffff';
+            ctx.lineWidth = node.isHint ? 4 : 2;
+            if (gameMode === 'insert' && node.key === lastInsertedNodeKey && !isAnimating) { ctx.strokeStyle = '#ffc107'; ctx.lineWidth = 4; }
+             else if (node.isHint) { ctx.strokeStyle = '#ffc107'; } else { ctx.strokeStyle = isRed(node) ? '#343a40' : '#ffffff'; } ctx.stroke();
+            ctx.fillStyle = isRed(node) ? '#343a40' : '#ffffff'; ctx.font = `${NODE_RADIUS * 0.7}px 'Press Start 2P'`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(node.key, node.x, node.y);
+            if (node === selectedNode && !isAnimating) { ctx.beginPath(); ctx.arc(node.x, node.y, NODE_RADIUS + 2, 0, Math.PI * 2); ctx.strokeStyle = '#00ccff'; ctx.lineWidth = 3; ctx.stroke(); }
+        }
+        function drawEdge(fromNode, toNode) { /* ... */
+            if (!fromNode || !toNode) return; ctx.beginPath(); ctx.moveTo(fromNode.x, fromNode.y); ctx.lineTo(toNode.x, toNode.y);
+            ctx.strokeStyle = '#cccccc'; if (isRed(toNode)) { ctx.lineWidth = 3; } else { ctx.lineWidth = 1.5; } ctx.stroke(); ctx.lineWidth = 1;
+        }
+        function drawTree(rootNode) { /* ... */
+            ctx.clearRect(0, 0, canvas.width, canvas.height); if (!rootNode) { if (!isAnimating) { ctx.font = "14px 'Press Start 2P'"; ctx.textAlign = 'center'; ctx.fillStyle = '#ccc'; ctx.fillText("Select Mode / New Challenge", canvas.width / 2, canvas.height / 2); } return; }
+            const allNodes = getAllNodes(rootNode); function drawEdgesRecursive(node) { if (!node) return; if (node.left) { drawEdge(node, node.left); drawEdgesRecursive(node.left); } if (node.right) { drawEdge(node, node.right); drawEdgesRecursive(node.right); } } drawEdgesRecursive(rootNode); allNodes.forEach(drawNode);
+        }
+
+        // --- Animation Logic --- (No changes needed)
+        let animationStartTime = 0;
+        let nodesToAnimate = [];
+        function lerp(start, end, t) { return start * (1 - t) + end * t; }
+        function animationStep(timestamp) { /* ... */
+            if (!animationStartTime) animationStartTime = timestamp;
+            const elapsed = timestamp - animationStartTime; const progress = Math.min(elapsed / ANIMATION_DURATION, 1);
+            nodesToAnimate.forEach(animNode => { animNode.node.x = lerp(animNode.startX, animNode.targetX, progress); animNode.node.y = lerp(animNode.startY, animNode.targetY, progress); });
+            drawTree(root);
+            if (progress < 1) { animationFrameId = requestAnimationFrame(animationStep); }
+            else {
+                isAnimating = false; animationFrameId = null; animationStartTime = 0;
+                nodesToAnimate.forEach(animNode => { animNode.node.x = animNode.targetX; animNode.node.y = animNode.targetY; });
+                const operation = nodesToAnimate.operation; const nodeKey = nodesToAnimate.nodeKey;
+                const nodeToOperateOn = findNodeByKey(root, nodeKey);
+                if (nodeToOperateOn) {
+                    let parent = findParent(root, nodeKey); let newSubtreeRoot; let wasLeftChild = parent && parent.left && parent.left.key === nodeKey;
+                    if (operation === 'rotateLeft') newSubtreeRoot = rotateLeft(nodeToOperateOn);
+                    else if (operation === 'rotateRight') newSubtreeRoot = rotateRight(nodeToOperateOn);
+                    else { console.error("Unknown operation callback:", operation); newSubtreeRoot = nodeToOperateOn; }
+                    if (parent) { if (wasLeftChild) parent.left = newSubtreeRoot; else parent.right = newSubtreeRoot; }
+                    else { root = newSubtreeRoot; }
+                } else { console.error("Node not found post-animation:", nodeKey); }
+                const finalLayout = calculateLayoutPositions(root, 0, NODE_RADIUS + 10, canvas.width / 4);
+                const finalShiftX = (canvas.width - finalLayout.width) / 2 - (Object.values(finalLayout.positions)[0]?.x - NODE_RADIUS ?? 0);
+                Object.values(finalLayout.positions).forEach(pos => pos.x += finalShiftX);
+                applyPositions(root, finalLayout.positions);
+                drawTree(root); updateControls(); checkAnswerBtn.disabled = !challengeActive; checkStepBtn.disabled = !challengeActive; console.log("Animation finished.");
+            }
+        }
+        function startRotationAnimation(nodeToRotate, operation) { /* ... */
+            if (isAnimating) return; console.log(`Starting ${operation} animation for node ${nodeToRotate.key}`);
+            saveState(); clearHints(root); selectedNode = null;
+            const currentLayout = calculateLayoutPositions(root, 0, NODE_RADIUS + 10, canvas.width / 4);
+            const currentShiftX = (canvas.width - currentLayout.width) / 2 - (Object.values(currentLayout.positions)[0]?.x - NODE_RADIUS ?? 0);
+            Object.values(currentLayout.positions).forEach(pos => pos.x += currentShiftX); applyPositions(root, currentLayout.positions);
+            const startPositions = {}; getAllNodes(root).forEach(n => startPositions[n.key] = { x: n.x, y: n.y });
+            let rootClone = cloneTree(root); // Was const
+            const nodeToRotateClone = findNodeByKey(rootClone, nodeToRotate.key);
+            const parentClone = findParent(rootClone, nodeToRotate.key); if (!nodeToRotateClone) { console.error("Cannot find node clone"); return; }
+            let rotatedSubtreeClone;
+            if (operation === 'rotateLeft') rotatedSubtreeClone = rotateLeft(nodeToRotateClone);
+            else if (operation === 'rotateRight') rotatedSubtreeClone = rotateRight(nodeToRotateClone);
+            else return;
+            if (parentClone) { if (parentClone.left && parentClone.left.key === nodeToRotate.key) parentClone.left = rotatedSubtreeClone; else parentClone.right = rotatedSubtreeClone; }
+            else { rootClone = rotatedSubtreeClone; } if(rootClone) rootClone.color = BLACK;
+            const targetLayout = calculateLayoutPositions(rootClone, 0, NODE_RADIUS + 10, canvas.width / 4);
+            const targetShiftX = (canvas.width - targetLayout.width) / 2 - (Object.values(targetLayout.positions)[0]?.x - NODE_RADIUS ?? 0);
+            Object.values(targetLayout.positions).forEach(pos => pos.x += targetShiftX);
+            nodesToAnimate = []; const allNodesCurrent = getAllNodes(root);
+            allNodesCurrent.forEach(n => {
+                const startPos = startPositions[n.key]; const targetPos = targetLayout.positions[n.key];
+                if (startPos && targetPos && (startPos.x !== targetPos.x || startPos.y !== targetPos.y)) {
+                    nodesToAnimate.push({ node: n, startX: startPos.x, startY: startPos.y, targetX: targetPos.x, targetY: targetPos.y });
+                    n.targetX = targetPos.x; n.targetY = targetPos.y;
+                } else if (startPos && !targetPos) { console.warn(`Node ${n.key} missing in target layout?`); }
+                else if (!startPos && targetPos) { console.warn(`Node ${n.key} missing in start layout?`); }
+                else if (startPos) { n.x = startPos.x; n.y = startPos.y; }
+            });
+            nodesToAnimate.operation = operation; nodesToAnimate.nodeKey = nodeToRotate.key;
+            isAnimating = true; updateControls(); animationStartTime = 0;
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            animationFrameId = requestAnimationFrame(animationStep);
+        }
+
+
+        // --- Game Logic ---
+        function showMessage(text, type = 'info', duration = 3000) { /* ... */
+             messageBox.textContent = text; messageBox.className = ''; messageBox.classList.add(type); messageBox.style.display = 'block';
+             clearTimeout(messageBox.timer); messageBox.timer = setTimeout(() => { messageBox.style.display = 'none'; }, duration);
+        }
+        // --- updateControls (Handles Mode 3) ---
+        function updateControls() {
+            const nodeSelected = selectedNode !== null;
+            const challengeLoaded = challengeActive;
+            const rootExists = root !== null;
+            const rootIsRed = rootExists && isRed(root);
+            const isHardMode = difficulty === 'hard';
+            const isInsertionMode = gameMode === 'insert';
+
+            // Disable all buttons during animation
+            allButtons.forEach(btn => btn.disabled = isAnimating);
+            // Also disable mode/difficulty buttons during animation
+            modeFixupBtn.disabled = isAnimating;
+            modeRotateBtn.disabled = isAnimating;
+            modeInsertBtn.disabled = isAnimating;
+            difficultyToggle.disabled = isAnimating;
+
+
+            if (!isAnimating) {
+                // --- Button Visibility based on Mode ---
+                checkAnswerBtn.style.display = isInsertionMode ? 'none' : 'inline-block';
+                checkStepBtn.style.display = isInsertionMode ? 'inline-block' : 'none';
+                insertNextBtn.style.display = isInsertionMode ? 'inline-block' : 'none';
+                newChallengeBtn.style.display = isInsertionMode ? 'none' : 'inline-block'; // Hide regular New Challenge in Mode 3
+                showStepsBtn.style.display = (gameMode === 'fixup') ? 'inline-block' : 'none'; // Only show for original Mode 1 (Fixup)
+
+
+                // --- Enable/Disable Logic ---
+                let canStructurallyRotateLeft = nodeSelected && selectedNode.right && challengeLoaded;
+                let canStructurallyRotateRight = nodeSelected && selectedNode.left && challengeLoaded;
+
+                let disableRotateLeft = !canStructurallyRotateLeft;
+                let disableRotateRight = !canStructurallyRotateRight;
+
+                if (!isHardMode) { // Normal mode adds the red child check
+                    if (canStructurallyRotateLeft) disableRotateLeft = !isRed(selectedNode.right);
+                    if (canStructurallyRotateRight) disableRotateRight = !isRed(selectedNode.left);
+                }
+
+                rotateLeftBtn.disabled = disableRotateLeft;
+                rotateRightBtn.disabled = disableRotateRight;
+                flipColorsBtn.disabled = !nodeSelected || !selectedNode.left || !selectedNode.right || !challengeLoaded;
+                setRootBlackBtn.disabled = !challengeLoaded || !rootIsRed;
+
+                // Mode-specific button logic
+                if (isInsertionMode) {
+                    const nextKeyExists = currentKeyIndex < keysToInsert.length - 1;
+                    // Enable Insert Next only if challenge loaded AND there are more keys AND user is not currently fixing (correctRoot is null after check step success OR initially before first insert)
+                    insertNextBtn.disabled = !challengeLoaded || (!nextKeyExists && currentKeyIndex >= keysToInsert.length -1) || correctRoot !== null; // Adjusted logic slightly for clarity
+                     // Enable Check Step only if challenge loaded AND user is expected to be fixing (correctRoot is not null)
+                    checkStepBtn.disabled = !challengeLoaded || correctRoot === null;
+                     // Operation buttons are enabled only when fixing a step
+                     rotateLeftBtn.disabled = rotateLeftBtn.disabled || correctRoot === null;
+                     rotateRightBtn.disabled = rotateRightBtn.disabled || correctRoot === null;
+                     flipColorsBtn.disabled = flipColorsBtn.disabled || correctRoot === null;
+                     setRootBlackBtn.disabled = setRootBlackBtn.disabled || correctRoot === null;
+                     undoBtn.disabled = (history.length === 0 || !challengeLoaded || correctRoot === null); // Can only undo during fixup
+                     hintBtn.disabled = !challengeLoaded || correctRoot === null; // Can only hint during fixup
+                     showAnswerBtn.disabled = !challengeLoaded || correctRoot === null; // Can only show step answer during fixup
+
+                } else { // Modes 1 & 2
+                    checkAnswerBtn.disabled = !challengeLoaded;
+                    undoBtn.disabled = history.length === 0 || !challengeLoaded;
+                    hintBtn.disabled = !challengeLoaded; // Hint always enabled if challenge loaded (difficulty handled internally)
+                    showAnswerBtn.disabled = !challengeLoaded;
+                }
+
+                // General buttons always enabled when not animating
+                newChallengeBtn.disabled = false; // This button is hidden in Mode 3 now
+                modeFixupBtn.disabled = false;
+                modeRotateBtn.disabled = false;
+                modeInsertBtn.disabled = false;
+                difficultyToggle.disabled = false;
+            }
+
+            selectedNodeValueSpan.textContent = nodeSelected && !isAnimating ? selectedNode.key : 'None';
+            selectedNodeValueSpan.style.color = nodeSelected && !isAnimating ? (isRed(selectedNode) ? '#dc3545' : '#ffffff') : '#6c757d';
+        }
+        function findNodeAt(node, x, y) { /* ... */
+             if (!node) return null; const dx = x - node.x; const dy = y - node.y; if (dx * dx + dy * dy <= NODE_RADIUS * NODE_RADIUS) return node;
+             if (y > node.y) { let found = findNodeAt(node.left, x, y); if (found) return found; found = findNodeAt(node.right, x, y); if (found) return found; } return null;
+        }
+        function handleCanvasClick(event) { /* ... */
+            if (!root && gameMode !== 'insert') return;
+            if (!challengeActive || isAnimating) return;
+            clearHints(root); const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left; const y = event.clientY - rect.top;
+            const clickedNode = findNodeAt(root, x, y);
+            selectedNode = clickedNode; console.log("Selected node:", selectedNode ? selectedNode.key : 'None');
+            updateControls(); drawTree(root);
+        }
+        function saveState() { /* ... */
+            if (!root) return; history.push(cloneTree(root)); if (history.length > HISTORY_LIMIT) { history.shift(); } updateControls();
+        }
+        function undoLastMove() { /* ... */
+             if (history.length === 0 || isAnimating || (gameMode === 'insert' && correctRoot === null)) return;
+             root = history.pop(); selectedNode = null; clearHints(root);
+             const layout = calculateLayoutPositions(root, 0, NODE_RADIUS + 10, canvas.width / 4);
+             const shiftX = (canvas.width - layout.width) / 2 - (Object.values(layout.positions)[0]?.x - NODE_RADIUS ?? 0);
+             Object.values(layout.positions).forEach(pos => pos.x += shiftX); applyPositions(root, layout.positions);
+             drawTree(root); updateControls(); showMessage("Undo successful.", 'info', 1500);
+             checkAnswerBtn.disabled = !challengeActive || gameMode === 'insert';
+             checkStepBtn.disabled = !challengeActive || gameMode !== 'insert' || correctRoot === null;
+        }
+         function clearHints(node) { /* ... */
+             if (!node) return; node.isHint = false; clearHints(node.left); clearHints(node.right);
+         }
+        function findViolationNode(node) { /* ... */
+            if (!node) return null; let v = findViolationNode(node.left); if (v) return v; v = findViolationNode(node.right); if (v) return v;
+            if (isRed(node.right) && !isRed(node.left)) return node; if (isRed(node.left) && isRed(node.left.left)) return node;
+            if (isRed(node.left) && isRed(node.right) && !isRed(node)) return node; if (node === root && isRed(node) && (node.left || node.right)) return node; return null;
+        }
+        function provideHint() { /* ... */
+             if (!root || !challengeActive || isAnimating || (gameMode === 'insert' && correctRoot === null)) return;
+             clearHints(root); const violationNode = findViolationNode(root);
+             if (violationNode) { if (violationNode === root && isRed(root)) { root.isHint = true; drawTree(root); showMessage("Hint: Root should generally be black.", 'info', 4000); } else { violationNode.isHint = true; drawTree(root); showMessage(`Hint: Look at node ${violationNode.key}. Rule violation?`, 'info', 4000); } }
+             else { if (areTreesEqual(root, correctRoot)) { showMessage("No violations found. Tree looks correct!", 'success', 3000); } else { showMessage("No specific violation hint. Compare structure or Show Answer.", 'info', 3000); } } updateControls();
+        }
+        function showAnswer() { /* ... */
+             if (!correctRoot || !challengeActive || isAnimating) return;
+             saveState(); root = cloneTree(correctRoot); selectedNode = null; clearHints(root);
+             if (gameMode !== 'insert') {
+                 challengeActive = false; instructionsDiv.textContent = "Correct answer shown. Start a New Challenge.";
+             } else {
+                 instructionsDiv.textContent = `Correct structure for inserting ${keysToInsert[currentKeyIndex]} shown. Click Insert Next.`;
+                 correctRoot = null; // Mark step as 'done' so Insert Next is enabled
+             }
+             const layout = calculateLayoutPositions(root, 0, NODE_RADIUS + 10, canvas.width / 4); const shiftX = (canvas.width - layout.width) / 2 - (Object.values(layout.positions)[0]?.x - NODE_RADIUS ?? 0); Object.values(layout.positions).forEach(pos => pos.x += shiftX); applyPositions(root, layout.positions);
+             drawTree(root); updateControls(); showMessage("Displaying correct structure for this step.", 'info', 3000); stepsDisplayDiv.style.display = 'none';
+        }
+        function showInsertionSteps() { /* ... (Only for Mode 1 - Fixup) ... */
+             if (!challengeActive || gameMode !== 'fixup' || isAnimating) return;
+             stepsDisplayDiv.innerHTML = ''; stepsDisplayDiv.style.display = 'block'; const title = document.createElement('p'); title.textContent = "Steps to fix the tree:"; title.style.fontWeight = 'bold'; stepsDisplayDiv.appendChild(title);
+             if (correctSteps.length === 0) { const p = document.createElement('p'); p.textContent = "(No fix-up steps were needed)"; stepsDisplayDiv.appendChild(p); } else { correctSteps.forEach((step, index) => { const p = document.createElement('p'); p.textContent = `${index + 1}. ${step}`; stepsDisplayDiv.appendChild(p); }); } showMessage("Showing the required fix-up steps.", 'info', 4000);
+
+        }
+        function areTreesEqual(node1, node2, ignoreRootColor = false) { /* ... */
+            if (node1 === null && node2 === null) return true; if (node1 === null || node2 === null) return false; let colorCheck = true;
+            if (ignoreRootColor && node1 === root && node2 === correctRoot) { /* skip root color */ } else { colorCheck = (node1.color === node2.color); }
+            if (node1.key !== node2.key || !colorCheck) { return false; } return areTreesEqual(node1.left, node2.left, ignoreRootColor) && areTreesEqual(node1.right, node2.right, ignoreRootColor);
+        }
+        function generateRandomTree(numNodes = 7) { /* ... */
+            let tree = null; const keys = new Set(); while (keys.size < numNodes) { keys.add(Math.floor(Math.random() * 100)); } const keyArray = Array.from(keys).sort(() => Math.random() - 0.5); keyArray.forEach(key => { tree = insertLLRBT(tree, key); }); if (tree) tree.color = BLACK; return tree;
+         }
+        function cloneTree(node) { /* ... */
+            if (!node) return null; const newNode = new Node(node.key, node.color); newNode.left = cloneTree(node.left); newNode.right = cloneTree(node.right); return newNode;
+        }
+
+        // --- Renamed Mode 1 Setup ---
+        function setupFixupChallenge() { /* ... */
+            gameMode = 'fixup'; selectedNode = null; history = []; correctSteps = [];
+            stepsDisplayDiv.style.display = 'none'; keyListContainer.style.display = 'none'; challengeActive = false;
+            let baseTree = null; let attempts = 0; while (!baseTree || (!baseTree.left && !baseTree.right) || attempts > 50) { baseTree = generateRandomTree(5 + Math.floor(Math.random() * 4)); attempts++; } if (!baseTree) { baseTree = insertLLRBT(null, 50); baseTree = insertLLRBT(baseTree, 30); baseTree = insertLLRBT(baseTree, 70); baseTree.color = BLACK; }
+            let keyToInsert; do { keyToInsert = Math.floor(Math.random() * 100); } while (findNodeByKey(baseTree, keyToInsert));
+            instructionsDiv.textContent = `Mode 1 (Fixup): Tree state after inserting ${keyToInsert}. Fix violations.`;
+            root = cloneTree(baseTree); lastInsertedNodeKey = null; root = bstInsert(root, keyToInsert);
+            correctRoot = cloneTree(baseTree); correctRoot = insertLLRBT(correctRoot, keyToInsert, correctSteps); if (correctRoot) correctRoot.color = BLACK;
+            console.log("Fixup Challenge: Insert", keyToInsert, "Correct steps:", correctSteps);
+            const layout = calculateLayoutPositions(root, 0, NODE_RADIUS + 10, canvas.width / 4); const shiftX = (canvas.width - layout.width) / 2 - (Object.values(layout.positions)[0]?.x - NODE_RADIUS ?? 0); Object.values(layout.positions).forEach(pos => pos.x += shiftX); applyPositions(root, layout.positions);
+            challengeActive = true; drawTree(root); updateControls();
+        }
+        function findNodeByKey(node, key) { /* ... */
+             if (!node) return null; if (key < node.key) return findNodeByKey(node.left, key); if (key > node.key) return findNodeByKey(node.right, key); return node;
+        }
+        // --- Mode 2 Setup (Rotation Practice - unchanged) ---
+        function setupRotationChallenge() { /* ... */
+            gameMode = 'rotate'; selectedNode = null; history = []; correctSteps = [];
+            stepsDisplayDiv.style.display = 'none'; keyListContainer.style.display = 'none'; challengeActive = false;
+            root = null; correctRoot = null; let attempts = 0;
+            while(attempts < 100) { attempts++; let tempRoot = generateRandomTree(5 + Math.floor(Math.random() * 4)); if (!tempRoot) continue; let targetNode = findRotationCandidate(tempRoot);
+                if (targetNode) { root = tempRoot; correctRoot = cloneTree(root); let parent = findParent(correctRoot, targetNode.key); let fixedSubtree; let instructionText = "Mode 2 (Rotation): Fix violation. ";
+                    if (isRed(targetNode.right) && !isRed(targetNode.left)) { instructionText += `Rotate Left at ${targetNode.key}.`; fixedSubtree = rotateLeft(targetNode); } else if (isRed(targetNode.left) && isRed(targetNode.left.left)) { instructionText += `Rotate Right at ${targetNode.key}.`; fixedSubtree = rotateRight(targetNode); } else if (isRed(targetNode.left) && isRed(targetNode.right) && !isRed(targetNode)) { instructionText += `Flip Colors at ${targetNode.key}.`; flipColors(targetNode); fixedSubtree = targetNode; } else { continue; }
+                    if (parent) { if (parent.left && parent.left.key === targetNode.key) parent.left = fixedSubtree; else parent.right = fixedSubtree; } else { correctRoot = fixedSubtree; } if (correctRoot) correctRoot.color = BLACK;
+                    instructionsDiv.textContent = instructionText; console.log("Rotation Challenge: Fix violation at", targetNode.key);
+                    const layout = calculateLayoutPositions(root, 0, NODE_RADIUS + 10, canvas.width / 4); const shiftX = (canvas.width - layout.width) / 2 - (Object.values(layout.positions)[0]?.x - NODE_RADIUS ?? 0); Object.values(layout.positions).forEach(pos => pos.x += shiftX); applyPositions(root, layout.positions);
+                    challengeActive = true; drawTree(root); updateControls(); return;
+                }
+            } // Fallback
+            console.warn("Could not generate specific rotation challenge."); instructionsDiv.textContent = "Mode 2 (Rotation): Practice rotations/flips."; root = generateRandomTree(6); correctRoot = cloneTree(root);
+            const layout = calculateLayoutPositions(root, 0, NODE_RADIUS + 10, canvas.width / 4); const shiftX = (canvas.width - layout.width) / 2 - (Object.values(layout.positions)[0]?.x - NODE_RADIUS ?? 0); Object.values(layout.positions).forEach(pos => pos.x += shiftX); applyPositions(root, layout.positions);
+            challengeActive = true; drawTree(root); updateControls();
+        }
+        function findRotationCandidate(node) { /* ... */
+             if (!node) return null; let c = findRotationCandidate(node.left); if (c) return c; c = findRotationCandidate(node.right); if (c) return c; if (isRed(node.right) && !isRed(node.left)) return node; if (isRed(node.left) && isRed(node.left.left)) return node; if (isRed(node.left) && isRed(node.right) && !isRed(node)) return node; return null;
+        }
+        function findParent(currentNode, key, parentNode = null) { /* ... */
+             if (!currentNode) return null; if (currentNode.key === key) return parentNode; if (key < currentNode.key) return findParent(currentNode.left, key, currentNode); else return findParent(currentNode.right, key, currentNode);
+        }
+
+        // --- NEW Mode 3 Setup ---
+        function setupInsertionMode() {
+            gameMode = 'insert';
+            selectedNode = null; history = []; correctSteps = [];
+            root = null; correctRoot = null; keysToInsert = []; currentKeyIndex = -1;
+            lastInsertedNodeKey = null; challengeActive = false; // Start inactive
+            stepsDisplayDiv.style.display = 'none'; keyListContainer.style.display = 'block';
+
+            const numKeys = 5 + Math.floor(Math.random() * 4);
+            const keys = new Set();
+            while (keys.size < numKeys) { keys.add(Math.floor(Math.random() * 100)); }
+            keysToInsert = Array.from(keys);
+
+            displayKeyList();
+            instructionsDiv.textContent = "Mode 3 (Insertion): Click 'Insert Next' to begin.";
+            drawTree(root);
+            // --- FIX: Set challengeActive to true AFTER setup ---
+            challengeActive = true;
+            // --- End Fix ---
+            updateControls(); // Now Insert Next should be enabled
+        }
+
+        // --- Mode 3 Helper: Display Key List ---
+        function displayKeyList() { /* ... */
+            keyListSpan.innerHTML = ''; keysToInsert.forEach((key, index) => { const span = document.createElement('span'); span.textContent = key; if (index === currentKeyIndex) { span.className = 'current-key'; } else if (index < currentKeyIndex) { span.className = 'inserted-key'; } keyListSpan.appendChild(span); });
+        }
+
+        // --- Mode 3 Action: Insert Next Number ---
+        function handleInsertNext() { /* ... */
+            if (isAnimating || gameMode !== 'insert') return; currentKeyIndex++;
+            if (currentKeyIndex >= keysToInsert.length) { instructionsDiv.textContent = "All keys inserted! Tree complete."; challengeActive = false; correctRoot = null; updateControls(); return; }
+            const keyToInsert = keysToInsert[currentKeyIndex]; console.log(`Inserting key: ${keyToInsert}`); lastInsertedNodeKey = null;
+            let expectedTree = cloneTree(root); expectedTree = insertLLRBT(expectedTree, keyToInsert); if (expectedTree) expectedTree.color = BLACK; correctRoot = expectedTree;
+            root = bstInsert(root, keyToInsert); history = []; selectedNode = null; challengeActive = true;
+            const layout = calculateLayoutPositions(root, 0, NODE_RADIUS + 10, canvas.width / 4); const shiftX = (canvas.width - layout.width) / 2 - (Object.values(layout.positions)[0]?.x - NODE_RADIUS ?? 0); Object.values(layout.positions).forEach(pos => pos.x += shiftX); applyPositions(root, layout.positions);
+            displayKeyList(); instructionsDiv.textContent = `Inserted ${keyToInsert}. Perform fix-up operations, then Check Step.`; drawTree(root); updateControls();
+        }
+
+        // --- Mode 3 Action: Check Step ---
+        function checkStep() { /* ... */
+            if (!root || !correctRoot || !challengeActive || isAnimating || gameMode !== 'insert') return; console.log("Checking Step Answer...");
+            if (areTreesEqual(root, correctRoot)) {
+                showMessage("Step Correct!", 'success', 2000); correctRoot = null; lastInsertedNodeKey = null; history = [];
+                if (currentKeyIndex >= keysToInsert.length - 1) { instructionsDiv.textContent = "All keys inserted correctly! Tree complete."; challengeActive = false; }
+                else { instructionsDiv.textContent = "Step correct! Click 'Insert Next'."; }
+                drawTree(root); updateControls();
+            } else {
+                 const rootMustBeBlack = (correctRoot.left !== null || correctRoot.right !== null);
+                 if (rootMustBeBlack && root.color === RED && areTreesEqual(root, correctRoot, true)) { showMessage("Structure correct, but Root must be Black!", 'error'); root.isHint = true; drawTree(root); }
+                 else { showMessage("Incorrect for this step. Try again or use Hint/Undo.", 'error'); }
+                 updateControls();
+            }
+        }
+
+
+        // --- Generic Check Answer (Modes 1 & 2) ---
+        function checkAnswer() { /* ... */
+            if (!root || !correctRoot || !challengeActive || isAnimating || gameMode === 'insert') return; console.log("Checking Answer...");
+            if (areTreesEqual(root, correctRoot)) { showMessage("Correct!", 'success'); instructionsDiv.textContent = "Correct! Press 'New Challenge'."; challengeActive = false; updateControls(); }
+            else { const rootMustBeBlack = (correctRoot.left !== null || correctRoot.right !== null); if (rootMustBeBlack && root.color === RED && areTreesEqual(root, correctRoot, true)) { showMessage("Correct Structure, but Root must be Black!", 'error'); root.isHint = true; drawTree(root); } else { showMessage("Incorrect. Try again, use Hint, or Undo.", 'error'); } }
+        }
+
+        // --- Event Listeners ---
+        modeFixupBtn.addEventListener('click', setupFixupChallenge);
+        modeRotateBtn.addEventListener('click', setupRotationChallenge);
+        modeInsertBtn.addEventListener('click', setupInsertionMode);
+        newChallengeBtn.addEventListener('click', () => { if (isAnimating || gameMode === 'insert') return; stepsDisplayDiv.style.display = 'none'; if (gameMode === 'fixup') setupFixupChallenge(); else if (gameMode === 'rotate') setupRotationChallenge(); else showMessage("Select a game mode first.", 'error', 2000); });
+        insertNextBtn.addEventListener('click', handleInsertNext);
+        checkStepBtn.addEventListener('click', checkStep);
+        checkAnswerBtn.addEventListener('click', checkAnswer);
+        canvas.addEventListener('click', handleCanvasClick);
+        undoBtn.addEventListener('click', undoLastMove);
+        hintBtn.addEventListener('click', provideHint);
+        showAnswerBtn.addEventListener('click', showAnswer);
+        showStepsBtn.addEventListener('click', showInsertionSteps);
+        setRootBlackBtn.addEventListener('click', () => { if (!root || !challengeActive || !isRed(root) || isAnimating || (gameMode === 'insert' && correctRoot === null) ) return; saveState(); clearHints(root); root.color = BLACK; selectedNode = null; drawTree(root); updateControls(); showMessage("Root color set to Black.", 'info', 1500); checkAnswerBtn.disabled = !challengeActive || gameMode === 'insert'; checkStepBtn.disabled = !challengeActive || gameMode !== 'insert' || correctRoot === null; });
+
+        // --- Difficulty Toggle Listener ---
+        difficultyToggle.addEventListener('change', (event) => { difficulty = event.target.checked ? 'hard' : 'normal'; console.log("Difficulty set to:", difficulty); updateControls(); showMessage(`Difficulty set to ${difficulty.toUpperCase()}`, 'info', 1500); });
+
+        // --- ROTATE LISTENERS (incorporating difficulty) ---
+        rotateLeftBtn.addEventListener('click', () => {
+             if (isAnimating || !challengeActive || (gameMode === 'insert' && correctRoot === null)) return; if (!selectedNode) { showMessage("Please select a node to rotate.", 'error', 2500); return; }
+             const conditionMet = (difficulty === 'hard') ? (selectedNode.right !== null) : (selectedNode.right !== null && isRed(selectedNode.right)); const errorMsg = (difficulty === 'hard') ? "Requires right child." : "Requires RED right child.";
+             if (!conditionMet) { showMessage(`Cannot Rotate Left: ${errorMsg}`, 'error', 2500); return; } // Clarified message slightly
+             startRotationAnimation(selectedNode, 'rotateLeft');
+        });
+        rotateRightBtn.addEventListener('click', () => {
+             if (isAnimating || !challengeActive || (gameMode === 'insert' && correctRoot === null)) return; if (!selectedNode) { showMessage("Please select a node to rotate.", 'error', 2500); return; }
+             const conditionMet = (difficulty === 'hard') ? (selectedNode.left !== null) : (selectedNode.left !== null && isRed(selectedNode.left)); const errorMsg = (difficulty === 'hard') ? "Requires left child." : "Requires RED left child.";
+             if (!conditionMet) { showMessage(`Cannot Rotate Right: ${errorMsg}`, 'error', 2500); return; } // Clarified message slightly
+             startRotationAnimation(selectedNode, 'rotateRight');
+        });
+
+        // Flip Colors
+        flipColorsBtn.addEventListener('click', () => {
+             if (isAnimating || !challengeActive || (gameMode === 'insert' && correctRoot === null)) return; if (!selectedNode) { showMessage("Please select node to flip.", 'error', 2500); return; }
+             if (!selectedNode.left || !selectedNode.right) { showMessage("Cannot Flip Colors: Requires TWO children.", 'error', 2500); return; }
+             applyInPlaceOperation(flipColors);
+        });
+
+        // applyInPlaceOperation (used by Flip Colors)
+         function applyInPlaceOperation(operationFunc) {
+             saveState(); clearHints(root); operationFunc(selectedNode);
+             const layout = calculateLayoutPositions(root, 0, NODE_RADIUS + 10, canvas.width / 4); const shiftX = (canvas.width - layout.width) / 2 - (Object.values(layout.positions)[0]?.x - NODE_RADIUS ?? 0); Object.values(layout.positions).forEach(pos => pos.x += shiftX); applyPositions(root, layout.positions);
+             drawTree(root); updateControls(); checkAnswerBtn.disabled = !challengeActive || gameMode === 'insert'; checkStepBtn.disabled = !challengeActive || gameMode !== 'insert' || correctRoot === null;
+        }
+
+        // --- Initial Setup ---
+        function initializeGame() {
+            console.log("Initializing LLRBT Game v11 (Fix Mode 3 Start)"); // Version bump
+            difficulty = difficultyToggle.checked ? 'hard' : 'normal';
+            updateControls();
+            drawTree(null);
+        }
+         window.addEventListener('resize', () => {
+             if (root && !isAnimating) { const layout = calculateLayoutPositions(root, 0, NODE_RADIUS + 10, canvas.width / 4); const shiftX = (canvas.width - layout.width) / 2 - (Object.values(layout.positions)[0]?.x - NODE_RADIUS ?? 0); Object.values(layout.positions).forEach(pos => pos.x += shiftX); applyPositions(root, layout.positions); drawTree(root); } else if (!isAnimating) { initializeGame(); }
+         });
+        window.onload = initializeGame;
+
+    </script>
+
+</body>
+</html>

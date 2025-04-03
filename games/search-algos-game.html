@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Algorithms Learning Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @font-face {
+        font-family: 'LucideIcons';
+        /* Corrected CDN link for Lucide font */
+        src: url(https://cdn.jsdelivr.net/npm/lucide-static@latest/font/Lucide.ttf) format('truetype');
+      }
+      .lucide {
+        font-family: 'LucideIcons';
+        font-size: 1.25rem; /* Adjust size as needed */
+        line-height: 1;
+        vertical-align: middle;
+      }
+      /* Custom styles for visualization */
+      .data-element {
+        min-width: 40px;
+        height: 40px;
+        transition: all 0.3s ease-in-out;
+        position: relative; /* For pointer positioning */
+      }
+      .pointer {
+        position: absolute;
+        bottom: -25px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.75rem;
+        font-weight: bold;
+        padding: 2px 4px;
+        border-radius: 4px;
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        white-space: nowrap;
+      }
+      .hash-slot {
+        min-width: 60px;
+        min-height: 40px;
+        position: relative;
+        border: 1px solid #ccc;
+        margin-bottom: 5px; /* Space for linked list nodes */
+      }
+      .hash-index {
+        position: absolute;
+        top: -20px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.8rem;
+        color: #555;
+      }
+      .chain-node {
+        min-width: 50px;
+        height: 30px;
+        margin-left: 10px; /* Indent chained nodes */
+        margin-top: 5px;
+      }
+      .probe-path {
+        animation: blink 1s infinite;
+      }
+      @keyframes blink {
+        50% { opacity: 0.5; }
+      }
+      /* Ensure buttons are styled nicely */
+       button {
+          transition: all 0.2s ease-in-out;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+       }
+       button:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+       }
+       button:active {
+           transform: translateY(0px);
+           box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+       }
+       /* Style for message box - Base styles applied via JS */
+        #message-box {
+            /* Position, padding, etc., applied via JS */
+            display: none; /* Hidden by default */
+        }
+        /* Type-specific styles applied via JS */
+
+        /* Style for hash formula display */
+        #hash-formula-display {
+            background-color: #eef2ff; /* Light indigo background */
+            border: 1px solid #c7d2fe; /* Indigo border */
+            color: #4338ca; /* Indigo text */
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+        // Basic Tailwind config (optional, CDN provides defaults)
+        // We primarily rely on the Inter font loaded via Google Fonts
+        // and specific styles defined above.
+    </script>
+</head>
+<body class="bg-gray-100 font-sans p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto bg-white p-6 rounded-lg shadow-lg">
+        <h1 class="text-2xl md:text-3xl font-bold text-center text-gray-800 mb-6">Search Algorithms Learning Game</h1>
+
+        <div class="mb-6 flex flex-wrap justify-center items-center gap-2 md:gap-4">
+             <div class="flex items-center gap-2">
+                 <label for="algorithm-select" class="font-medium text-gray-700">Algorithm:</label>
+                <select id="algorithm-select" class="p-2 border rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="linear">Linear Search</option>
+                    <option value="binary">Binary Search</option>
+                    <option value="hash-chaining">Hashing (Separate Chaining)</option>
+                    <option value="hash-linear-probing">Hashing (Linear Probing)</option>
+                    <option value="hash-quadratic-probing">Hashing (Quadratic Probing)</option>
+                    <option value="hash-double-hashing">Hashing (Double Hashing)</option>
+                </select>
+             </div>
+             <div class="flex items-center gap-2">
+                 <label for="difficulty-select" class="font-medium text-gray-700">Difficulty:</label>
+                 <select id="difficulty-select" class="p-2 border rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" disabled>
+                     <option value="easy">Easy</option>
+                     <option value="hard">Hard</option>
+                 </select>
+            </div>
+            <button id="start-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md inline-flex items-center gap-2">
+                <span class="lucide" aria-hidden="true">&#xea45;</span> Start New Stage
+            </button>
+        </div>
+
+        <div id="game-area" class="mt-6 p-4 border border-gray-300 rounded-lg bg-gray-50 min-h-[350px]">
+            <div id="instructions" class="text-lg text-center text-gray-700 mb-4 font-medium">Select an algorithm and start a new stage.</div>
+            <div id="hash-formula-display" class="text-sm text-center font-mono p-2 rounded-md mb-4 hidden">
+                </div>
+            <div id="visualization" class="flex flex-wrap justify-center items-end gap-1 mb-4 min-h-[60px]">
+                </div>
+             <div id="hash-table-visualization" class="flex flex-wrap justify-center gap-4 mb-4 min-h-[100px]">
+                </div>
+            <div id="user-interaction" class="text-center mt-4">
+                </div>
+            <div id="feedback" class="mt-4 text-center font-semibold"></div>
+        </div>
+
+        <div class="mt-6 flex flex-wrap justify-center gap-2">
+            <button id="hint-button" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-md inline-flex items-center gap-2 disabled:opacity-50" disabled>
+                 <span class="lucide" aria-hidden="true">&#xea0f;</span> Hint
+            </button>
+            <button id="answer-button" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md inline-flex items-center gap-2 disabled:opacity-50" disabled>
+                 <span class="lucide" aria-hidden="true">&#xea11;</span> Show Answer Step
+            </button>
+             <button id="submit-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md inline-flex items-center gap-2 disabled:opacity-50" disabled>
+                 <span class="lucide" aria-hidden="true">&#xe938;</span> Submit Answer
+            </button>
+        </div>
+    </div>
+
+    <div id="message-box"></div>
+
+    <script>
+        // --- DOM Elements ---
+        const algorithmSelect = document.getElementById('algorithm-select');
+        const difficultySelect = document.getElementById('difficulty-select'); // New difficulty selector
+        const startButton = document.getElementById('start-button');
+        const instructionsDiv = document.getElementById('instructions');
+        const hashFormulaDisplay = document.getElementById('hash-formula-display'); // New formula display
+        const visualizationDiv = document.getElementById('visualization');
+        const hashTableVisualizationDiv = document.getElementById('hash-table-visualization');
+        const userInteractionDiv = document.getElementById('user-interaction');
+        const feedbackDiv = document.getElementById('feedback');
+        const hintButton = document.getElementById('hint-button');
+        const answerButton = document.getElementById('answer-button');
+        const submitButton = document.getElementById('submit-button');
+        const messageBox = document.getElementById('message-box');
+
+        // --- Game State ---
+        let currentAlgorithm = '';
+        let currentDifficulty = 'easy'; // New state for difficulty
+        let gameData = {}; // Holds array, target, hash table, etc.
+        let currentStep = 0;
+        let userSteps = [];
+        let correctSteps = [];
+        let gameOver = true;
+        let hintUsed = false;
+        let hashSize = 13; // Default hash table size based on tutorial
+
+        // --- Utility Functions ---
+        function showMessage(text, type = 'info', duration = 3000) {
+            messageBox.textContent = text;
+            // Set base classes first, overwriting previous ones
+            messageBox.className = 'fixed bottom-5 left-1/2 -translate-x-1/2 p-3 rounded-lg shadow-lg z-50 font-sans';
+
+            // Determine type-specific classes as an array
+            let typeClasses = [];
+            if (type === 'success') {
+                typeClasses = ['bg-green-500', 'text-white'];
+            } else if (type === 'error') {
+                typeClasses = ['bg-red-500', 'text-white'];
+            } else { // Default to info
+                typeClasses = ['bg-blue-500', 'text-white'];
+            }
+
+            // Add type-specific classes using the spread operator
+            messageBox.classList.add(...typeClasses);
+
+            messageBox.style.display = 'block';
+
+            // Clear previous timeouts if any
+            if (messageBox.timeoutId) {
+                clearTimeout(messageBox.timeoutId);
+            }
+            messageBox.timeoutId = setTimeout(() => {
+                messageBox.style.display = 'none';
+                messageBox.timeoutId = null;
+            }, duration);
+        }
+
+
+        function enableControls(enableHint = true, enableAnswer = true, enableSubmit = false) {
+            hintButton.disabled = !enableHint || gameOver;
+            answerButton.disabled = !enableAnswer || gameOver;
+            submitButton.disabled = !enableSubmit || gameOver;
+        }
+
+        function disableControls() {
+            hintButton.disabled = true;
+            answerButton.disabled = true;
+            submitButton.disabled = true;
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // Generates random numbers for easy difficulty
+        function generateRandomArray(size = 10, maxVal = 100, sorted = false) {
+            const arr = new Set(); // Use Set to avoid duplicates initially
+             while(arr.size < size) {
+                 arr.add(Math.floor(Math.random() * maxVal) + 1);
+             }
+             const result = Array.from(arr);
+            if (sorted) {
+                result.sort((a, b) => a - b);
+            }
+            return result;
+        }
+
+        // Generates values for hashing, considering difficulty
+        function generateHashingValues(count = 8, difficulty = 'easy', algoType) {
+            let values = [];
+            let attempts = 0;
+            const maxAttempts = 20; // Prevent infinite loops
+
+            while (attempts < maxAttempts) {
+                attempts++;
+                values = [];
+                const valueSet = new Set(); // Ensure unique values
+
+                if (difficulty === 'easy') {
+                    while(valueSet.size < count) {
+                        valueSet.add(Math.floor(Math.random() * 150) + 1); // Slightly larger range maybe
+                    }
+                     values = Array.from(valueSet);
+
+                } else { // difficulty === 'hard'
+                    // Strategy: Generate numbers likely to collide
+                    const targetHashes = new Set();
+                    while (targetHashes.size < Math.ceil(count / 2.5)) { // Aim for collisions in ~half the slots
+                         targetHashes.add(Math.floor(Math.random() * hashSize));
+                    }
+
+                    let generatedCount = 0;
+                    // Generate colliding values
+                    targetHashes.forEach(hash => {
+                        let collisionsNeeded = Math.random() < 0.5 ? 2 : 3; // Generate 2 or 3 values for this hash
+                        for (let i = 0; i < collisionsNeeded && generatedCount < count; i++) {
+                             let potentialValue;
+                             let valueAttempts = 0;
+                             do {
+                                 // Generate a number that hashes to the target hash
+                                 potentialValue = hash + Math.floor(Math.random() * 10) * hashSize;
+                                 if (potentialValue === 0) potentialValue = hashSize * (Math.floor(Math.random()*5)+1); // Avoid 0 if hash is 0
+                                 valueAttempts++;
+                             } while (valueSet.has(potentialValue) && valueAttempts < 20); // Avoid duplicates
+
+                             if (!valueSet.has(potentialValue)) {
+                                valueSet.add(potentialValue);
+                                generatedCount++;
+                             }
+                        }
+                    });
+
+                     // Fill remaining slots with random non-colliding values if needed
+                    while (generatedCount < count) {
+                        let potentialValue = Math.floor(Math.random() * 150) + 1;
+                        if (!valueSet.has(potentialValue)) {
+                            valueSet.add(potentialValue);
+                            generatedCount++;
+                        }
+                    }
+                    values = shuffleArray(Array.from(valueSet)); // Shuffle the generated values
+                }
+
+                // --- Validation Step (Crucial for Hard Difficulty) ---
+                 // Create temporary data structure to test solvability
+                 const testData = {
+                     values: values,
+                     table: algoType === 'hash-chaining' ? Array(hashSize).fill(null).map(() => []) : Array(hashSize).fill(null),
+                     probing: algoType === 'hash-chaining' ? null : algoType.split('-')[2], // linear, quadratic, double
+                     secondaryHash: algoType === 'hash-double-hashing' ? (key) => (key % 7) + 1 : null
+                 };
+                 const testSteps = calculateHashingSteps(testData, true); // Pass silent=true
+
+                 // Check if any step failed (finalIndex is -1)
+                 const isSolvable = testSteps.every(step => step.finalIndex !== -1);
+
+                 if (isSolvable) {
+                     console.log(`Generated ${difficulty} values (attempt ${attempts}):`, values);
+                     return values; // Solvable set found
+                 } else {
+                     console.warn(`Generated ${difficulty} values (attempt ${attempts}) were unsolvable, regenerating...`);
+                 }
+            }
+
+            // Fallback to easy generation if max attempts reached
+            console.error(`Failed to generate solvable 'hard' values after ${maxAttempts} attempts. Falling back to 'easy'.`);
+            return generateHashingValues(count, 'easy', algoType);
+        }
+
+
+        function generateTarget(arr, shouldExist = Math.random() > 0.3) {
+             if (arr.length === 0) return Math.floor(Math.random() * 100) + 1;
+            if (shouldExist) {
+                return arr[Math.floor(Math.random() * arr.length)];
+            } else {
+                let target;
+                do {
+                    target = Math.floor(Math.random() * 110) + 1; // Slightly larger range
+                } while (arr.includes(target));
+                return target;
+            }
+        }
+
+        // --- Visualization Functions ---
+        function displayArray(arr, highlights = {}, pointers = {}) {
+            visualizationDiv.innerHTML = '';
+            hashTableVisualizationDiv.style.display = 'none';
+            hashFormulaDisplay.style.display = 'none'; // Hide formula display for array algos
+            visualizationDiv.style.display = 'flex';
+            arr.forEach((val, index) => {
+                const element = document.createElement('div');
+                element.textContent = val;
+                element.dataset.index = index;
+                // Added rounded-md for consistency
+                element.classList.add('data-element', 'border', 'border-gray-400', 'bg-gray-200', 'p-2', 'rounded-md', 'text-center', 'font-mono', 'cursor-pointer', 'hover:bg-blue-200');
+
+                if (highlights[index] === 'target') {
+                    element.classList.replace('bg-gray-200', 'bg-green-400');
+                    element.classList.add('font-bold');
+                } else if (highlights[index] === 'checked') {
+                    element.classList.replace('bg-gray-200', 'bg-blue-300');
+                } else if (highlights[index] === 'discarded') {
+                     element.classList.replace('bg-gray-200', 'bg-red-200');
+                     element.classList.add('opacity-60');
+                }
+
+                // Add pointers (lo, hi, mid)
+                let pointerHtml = '';
+                for (const p in pointers) {
+                    if (pointers[p] === index) {
+                        pointerHtml += `<span class="pointer">${p.toUpperCase()}</span>`;
+                    }
+                }
+                if (pointerHtml) {
+                    // Use innerHTML carefully, ensure pointers don't contain user input
+                    element.innerHTML = `${val}` + pointerHtml; // Re-add value text
+                }
+
+                element.addEventListener('click', handleElementClick);
+                visualizationDiv.appendChild(element);
+            });
+        }
+
+         function displayHashTable(table, highlights = {}, currentAction = null) {
+            hashTableVisualizationDiv.innerHTML = '';
+            visualizationDiv.style.display = 'none';
+            hashFormulaDisplay.style.display = 'block'; // Show formula display for hash algos
+            hashTableVisualizationDiv.style.display = 'flex';
+            // Changed flex-wrap to flex-col for better vertical layout
+            hashTableVisualizationDiv.classList.remove('flex-wrap', 'justify-center', 'gap-4');
+            hashTableVisualizationDiv.classList.add('flex-col', 'items-start', 'gap-1'); // Use items-start and smaller gap
+
+            table.forEach((slot, index) => {
+                const slotContainer = document.createElement('div');
+                slotContainer.classList.add('flex', 'items-center', 'mb-1', 'w-full'); // Make container full width
+
+                const indexLabel = document.createElement('div');
+                indexLabel.textContent = `[${index}]`;
+                indexLabel.classList.add('w-8', 'text-right', 'mr-2', 'font-mono', 'text-gray-600', 'flex-shrink-0'); // Prevent shrinking
+                slotContainer.appendChild(indexLabel);
+
+                const slotElement = document.createElement('div');
+                 // Added min-h-[40px] for consistent height
+                slotElement.classList.add('hash-slot', 'rounded-md', 'flex', 'items-center', 'justify-start', 'p-1', 'bg-gray-200', 'min-h-[40px]', 'flex-grow'); // Allow slot to grow, align items start for chaining
+                slotElement.dataset.index = index;
+
+                 // Apply highlight borders
+                 slotElement.classList.remove('border-blue-500', 'border-yellow-500', 'border-green-500', 'border-red-500', 'border-2', 'probe-path'); // Clear previous borders/animations
+                 if (highlights[index] === 'initial') slotElement.classList.add('border-blue-500', 'border-2');
+                 if (highlights[index] === 'probe') slotElement.classList.add('border-yellow-500', 'border-2', 'probe-path');
+                 if (highlights[index] === 'final') slotElement.classList.add('border-green-500', 'border-2');
+                 if (highlights[index] === 'occupied') slotElement.classList.add('border-red-500', 'border-2');
+
+
+                if (Array.isArray(slot)) { // Separate Chaining
+                    slotElement.classList.replace('bg-gray-200', 'bg-transparent'); // Main slot is just a container for the chain
+                    slotElement.classList.remove('justify-center'); // Align chain start
+                    slotElement.classList.add('border-none'); // Remove border from container itself
+                    let chainContainer = document.createElement('div'); // Container for nodes
+                    chainContainer.classList.add('flex', 'items-center', 'flex-wrap'); // Allow wrapping if needed
+
+                    if (slot.length === 0) {
+                         const emptyNode = document.createElement('div');
+                         emptyNode.textContent = 'null';
+                         emptyNode.classList.add('chain-node', 'border', 'border-dashed', 'border-gray-400', 'bg-gray-100', 'p-1', 'rounded-md', 'text-center', 'font-mono', 'text-gray-500', 'italic', 'h-[30px]', 'flex', 'items-center', 'justify-center'); // Explicit height
+                         chainContainer.appendChild(emptyNode);
+                    } else {
+                        slot.forEach((value, nodeIndex) => {
+                             if (nodeIndex > 0) {
+                                // Add arrow visual
+                                const arrow = document.createElement('span');
+                                arrow.innerHTML = '&rarr;';
+                                arrow.classList.add('mx-1', 'text-gray-600');
+                                chainContainer.appendChild(arrow);
+                            }
+                            const node = document.createElement('div');
+                            node.textContent = value;
+                            node.classList.add('chain-node', 'border', 'border-gray-400', 'bg-blue-100', 'p-1', 'rounded-md', 'text-center', 'font-mono', 'h-[30px]', 'flex', 'items-center', 'justify-center'); // Explicit height
+
+                            // Highlight the newly added node in the chain
+                             if (currentAction && currentAction.type === 'insert' && currentAction.value === value && currentAction.finalIndex === index && nodeIndex === 0) { // Highlight if it's the inserted value at the head
+                                node.classList.replace('bg-blue-100','bg-green-300');
+                                node.classList.add('font-bold');
+                            }
+                            chainContainer.appendChild(node);
+                        });
+                    }
+                     slotElement.appendChild(chainContainer); // Add chain to the slot element
+                } else { // Open Addressing
+                    slotElement.classList.add('justify-center'); // Center content for open addressing
+                    slotElement.textContent = slot === null ? '' : slot;
+                    if (slot !== null) {
+                         slotElement.classList.replace('bg-gray-200', 'bg-blue-100');
+                    }
+                     // Highlight the newly added node
+                     if (currentAction && currentAction.type === 'insert' && currentAction.value === slot && currentAction.finalIndex === index) {
+                         slotElement.classList.replace('bg-blue-100','bg-green-300');
+                         slotElement.classList.add('font-bold');
+                    }
+                }
+
+                 slotContainer.appendChild(slotElement);
+                 hashTableVisualizationDiv.appendChild(slotContainer);
+            });
+        }
+
+
+        // --- Algorithm Logic ---
+
+        // Linear Search
+        function setupLinearSearch() {
+            currentAlgorithm = 'linear';
+            // Difficulty doesn't apply to linear search
+            difficultySelect.disabled = true;
+            hashFormulaDisplay.style.display = 'none'; // Hide formula display
+
+            const arr = generateRandomArray(10, 50);
+            const target = generateTarget(arr);
+            gameData = { array: arr, target: target };
+            correctSteps = [];
+            let found = false;
+            for (let i = 0; i < arr.length; i++) {
+                correctSteps.push({ index: i, value: arr[i] });
+                if (arr[i] === target) {
+                    found = true;
+                    break;
+                }
+            }
+            gameData.found = found;
+            gameData.foundIndex = found ? correctSteps[correctSteps.length - 1].index : -1;
+
+            instructionsDiv.textContent = `Linear Search: Find the value ${target}. Click the elements in the order they are checked.`;
+            feedbackDiv.textContent = '';
+            userSteps = [];
+            currentStep = 0;
+            gameOver = false;
+            displayArray(gameData.array);
+            enableControls(true, true, false);
+            userInteractionDiv.innerHTML = ''; // Clear hash input if any
+        }
+
+        // Binary Search
+        function setupBinarySearch() {
+            currentAlgorithm = 'binary';
+            // Difficulty doesn't apply to binary search
+            difficultySelect.disabled = true;
+            hashFormulaDisplay.style.display = 'none'; // Hide formula display
+
+            const arr = generateRandomArray(12, 100, true); // Sorted array
+            const target = generateTarget(arr);
+            gameData = { array: arr, target: target, lo: 0, hi: arr.length - 1, mid: -1 };
+            correctSteps = [];
+            let lo = 0;
+            let hi = arr.length - 1;
+            let found = false;
+            let foundIndex = -1;
+
+            while (lo <= hi) {
+                let mid = Math.floor(lo + (hi - lo) / 2);
+                 correctSteps.push({ type: 'check', index: mid, value: arr[mid], lo: lo, hi: hi });
+                if (arr[mid] === target) {
+                    found = true;
+                    foundIndex = mid;
+                    break;
+                } else if (arr[mid] < target) {
+                    correctSteps.push({ type: 'discard', range: 'left', lo: lo, hi: mid }); // Record range *before* update
+                    lo = mid + 1;
+                } else { // arr[mid] > target
+                     correctSteps.push({ type: 'discard', range: 'right', lo: mid, hi: hi }); // Record range *before* update
+                    hi = mid - 1;
+                }
+            }
+             gameData.found = found;
+             gameData.foundIndex = foundIndex;
+
+            instructionsDiv.textContent = `Binary Search: Find the value ${target} in the sorted array. Click the middle element of the current search range.`;
+            feedbackDiv.textContent = '';
+            userSteps = [];
+            currentStep = 0;
+            gameOver = false;
+            displayArray(gameData.array, {}, { lo: gameData.lo, hi: gameData.hi });
+            enableControls(true, true, false);
+            userInteractionDiv.innerHTML = ''; // Clear hash input if any
+        }
+
+         // Hashing Common Setup
+        function setupHashing(type) {
+            currentAlgorithm = type;
+            currentDifficulty = difficultySelect.value; // Get selected difficulty
+            difficultySelect.disabled = false; // Enable difficulty selection for hashing
+
+            // Generate values based on difficulty, ensuring solvability for 'hard'
+            const valuesToInsert = generateHashingValues(8, currentDifficulty, type);
+            if (!valuesToInsert) {
+                 showMessage("Failed to generate a suitable problem. Please try starting the stage again.", "error", 5000);
+                 disableControls();
+                 gameOver = true;
+                 return; // Stop setup if generation failed
+            }
+
+            hashSize = 13; // From tutorial Q3/Q4
+            let table;
+            let probingType = null;
+            let secondaryHash = null;
+            let formula = ''; // Variable to store the formula string
+
+            switch (type) {
+                case 'hash-chaining':
+                    table = Array(hashSize).fill(null).map(() => []);
+                    probingType = null;
+                    formula = `h(x) = x mod ${hashSize}`;
+                    instructionsDiv.textContent = `Hashing (Separate Chaining): Insert ${valuesToInsert[0]}. Enter the target index.`;
+                    break;
+                case 'hash-linear-probing':
+                    table = Array(hashSize).fill(null);
+                    probingType = 'linear';
+                    formula = `h(x) = x mod ${hashSize}. Probe: (h(x) + i) mod ${hashSize}`;
+                    instructionsDiv.textContent = `Hashing (Linear Probing): Insert ${valuesToInsert[0]}. Calculate hash, then enter the final index after probing.`;
+                    break;
+                 case 'hash-quadratic-probing':
+                    table = Array(hashSize).fill(null);
+                    probingType = 'quadratic';
+                    formula = `h(x) = x mod ${hashSize}. Probe: (h(x) + i*i) mod ${hashSize}`;
+                    instructionsDiv.textContent = `Hashing (Quadratic Probing): Insert ${valuesToInsert[0]}. Calculate hash, then enter the final index after probing (i=1, 2, 3...).`;
+                    break;
+                 case 'hash-double-hashing':
+                    table = Array(hashSize).fill(null);
+                    probingType = 'double';
+                    // Secondary hash function g(x) = (x mod 7) + 1 (from Tutorial Q4b)
+                    secondaryHash = (key) => (key % 7) + 1;
+                    formula = `h1(x) = x mod ${hashSize}, h2(x) = (x mod 7) + 1. Probe: (h1(x) + i*h2(x)) mod ${hashSize}`;
+                    instructionsDiv.textContent = `Hashing (Double Hashing): Insert ${valuesToInsert[0]}. Calculate hashes, then enter final index after probing (i=1, 2, 3...).`;
+                    break;
+            }
+
+            // Display the formula
+            hashFormulaDisplay.textContent = `Formula: ${formula}`;
+            hashFormulaDisplay.style.display = 'block';
+
+            gameData = {
+                values: valuesToInsert,
+                table: table,
+                currentIndex: 0, // Index in valuesToInsert - DEPRECATED, use currentStep
+                probing: probingType,
+                secondaryHash: secondaryHash
+            };
+            // Pre-calculate correct steps using the generated values
+            correctSteps = calculateHashingSteps(gameData);
+
+            feedbackDiv.textContent = '';
+            userSteps = [];
+            currentStep = 0;
+            gameOver = false;
+            // Display the initial empty table state before the first insertion
+            displayHashTable(gameData.table, {}, null); // No current action initially
+             // For hashing, user needs to submit the index
+            enableControls(true, true, true);
+            // Prepare input for index submission
+            userInteractionDiv.innerHTML = `
+                <label for="hash-index-input" class="mr-2 font-medium">Enter Target Index:</label>
+                <input type="number" id="hash-index-input" min="0" max="${hashSize - 1}" class="p-1 border rounded w-20 text-center">
+            `;
+             // Update instruction for the first value
+             // Ensure split logic is robust
+             const instructionParts = instructionsDiv.textContent.split(': Insert');
+             if (instructionParts.length > 1) {
+                 const mainInstruction = instructionParts[0];
+                 const actionInstructionParts = instructionParts[1].split('.');
+                 if (actionInstructionParts.length > 1) {
+                    instructionsDiv.textContent = `${mainInstruction}: Insert ${valuesToInsert[0]}. ${actionInstructionParts[1].trim()}`;
+                 } else {
+                     // Fallback if split doesn't work as expected
+                     instructionsDiv.textContent = `${mainInstruction}: Insert ${valuesToInsert[0]}. Calculate hash and enter the final index.`;
+                 }
+             }
+        }
+
+        // Calculates the sequence of steps for hashing insertion
+        // Added 'silent' parameter to suppress errors during validation
+        function calculateHashingSteps(data, silent = false) {
+             const steps = [];
+             // Deep copy needed for validation to not affect main game state if it fails
+             const tempTable = JSON.parse(JSON.stringify(data.table));
+             const { values, probing, secondaryHash } = data;
+
+             values.forEach(value => {
+                 const initialHash = value % hashSize;
+                 let finalIndex = -1;
+                 const probeSequence = []; // Track probed indices in order
+
+                 if (probing === null) { // Separate Chaining
+                     finalIndex = initialHash; // Always insert at the head of the chain index
+                     probeSequence.push(initialHash); // Only step is the initial hash
+                     // Simulate insertion for subsequent calculations in this loop
+                     tempTable[finalIndex].unshift(value);
+                 } else { // Open Addressing
+                     let index = initialHash;
+                     let i = 0; // Probe attempt counter (0 = initial check, 1 = first probe, etc.)
+                     let foundSlot = false;
+                     // Limit probes to prevent infinite loops, especially for quadratic/double
+                     // Allow probing the entire table size + initial check
+                     const maxProbes = hashSize;
+
+                     while (i <= maxProbes) { // Check initial slot (i=0) + up to hashSize probes
+                         probeSequence.push(index); // Record the index being checked
+
+                         if (tempTable[index] === null) { // Found empty slot
+                             tempTable[index] = value; // Simulate insertion
+                             finalIndex = index;
+                             foundSlot = true;
+                             break;
+                         } else if (tempTable[index] === value) { // Found duplicate - treat as success for this game
+                             finalIndex = index;
+                             foundSlot = true;
+                              if (!silent) console.log(`Value ${value} already exists at index ${index}`);
+                             break;
+                         }
+
+                         // Collision: Calculate next probe index
+                         i++; // Increment probe counter *after* checking the current index
+                         if (i > maxProbes) break; // Stop if we've tried all slots
+
+                         if (probing === 'linear') {
+                             index = (initialHash + i) % hashSize;
+                         } else if (probing === 'quadratic') {
+                             index = (initialHash + i * i) % hashSize;
+                         } else if (probing === 'double') {
+                             const h2 = secondaryHash(value);
+                              if (h2 === 0) { // Should not happen with (x mod 7) + 1
+                                  if (!silent) console.error(`Double Hashing Error: h2 is zero for value ${value}`);
+                                  finalIndex = -1; // Mark as failed
+                                  foundSlot = false; // Ensure we record failure
+                                  break; // Cannot proceed
+                              }
+                             index = (initialHash + i * h2) % hashSize;
+                         }
+                     }
+
+                      if (!foundSlot && finalIndex === -1) { // Check if loop finished without finding a slot
+                         if (!silent) console.error(`Could not find slot for ${value} with ${probing} probing after ${maxProbes} probes.`);
+                         finalIndex = -1; // Ensure marked as failure
+                     }
+                 }
+                 steps.push({ value: value, initialHash: initialHash, finalIndex: finalIndex, probeSequence: probeSequence });
+             });
+             return steps;
+         }
+
+
+        // --- Event Handlers ---
+        algorithmSelect.addEventListener('change', () => {
+            // Enable/disable difficulty based on algorithm
+            const selectedAlgo = algorithmSelect.value;
+            if (selectedAlgo.startsWith('hash')) {
+                difficultySelect.disabled = false;
+            } else {
+                difficultySelect.disabled = true;
+                difficultySelect.value = 'easy'; // Reset difficulty for non-hash algos
+            }
+        });
+
+        // Update difficulty state when changed
+        difficultySelect.addEventListener('change', () => {
+            currentDifficulty = difficultySelect.value;
+            // Optional: Could restart the stage automatically, or prompt user
+            // For now, just update the state for the *next* time Start is clicked.
+        });
+
+
+        startButton.addEventListener('click', () => {
+            const selectedAlgo = algorithmSelect.value;
+            visualizationDiv.innerHTML = ''; // Clear previous visualization
+            hashTableVisualizationDiv.innerHTML = '';
+            userInteractionDiv.innerHTML = ''; // Clear previous interactions
+            hashFormulaDisplay.style.display = 'none'; // Hide formula initially
+            feedbackDiv.textContent = ''; // Clear feedback
+
+            switch (selectedAlgo) {
+                case 'linear':
+                    setupLinearSearch();
+                    break;
+                case 'binary':
+                    setupBinarySearch();
+                    break;
+                 case 'hash-chaining':
+                 case 'hash-linear-probing':
+                 case 'hash-quadratic-probing':
+                 case 'hash-double-hashing':
+                     setupHashing(selectedAlgo); // Difficulty is read inside setupHashing
+                     break;
+                default:
+                    instructionsDiv.textContent = 'Algorithm not implemented yet.';
+                    disableControls();
+            }
+        });
+
+        function handleElementClick(event) {
+            if (gameOver || currentAlgorithm.startsWith('hash')) return; // Ignore clicks during hashing game
+
+            // Find the closest parent with data-index
+            const targetElement = event.target.closest('.data-element');
+            if (!targetElement) return; // Clicked outside an element
+
+            const clickedIndex = parseInt(targetElement.dataset.index);
+            // Ensure gameData.array exists and index is valid
+            if (!gameData.array || clickedIndex < 0 || clickedIndex >= gameData.array.length) {
+                console.error("Invalid click event or game state.");
+                return;
+            }
+            const clickedValue = gameData.array[clickedIndex];
+
+
+            if (currentAlgorithm === 'linear') {
+                // --- Linear Search Click Logic ---
+                userSteps.push({ index: clickedIndex, value: clickedValue });
+                const correctStep = correctSteps[currentStep];
+                const highlights = {};
+                // Highlight all user-checked steps so far
+                userSteps.forEach(step => highlights[step.index] = 'checked');
+
+                if (clickedIndex === correctStep.index) {
+                    feedbackDiv.textContent = `Correct! Checked index ${clickedIndex} (value ${clickedValue}).`;
+                    feedbackDiv.className = 'mt-4 text-center font-semibold text-green-600';
+                    currentStep++;
+                    // Check for game end conditions
+                    if (clickedValue === gameData.target || currentStep >= correctSteps.length) {
+                        gameOver = true;
+                        disableControls();
+                        highlights[clickedIndex] = 'target'; // Highlight final target if found
+                        if (gameData.found) {
+                             showMessage(`Found ${gameData.target} at index ${gameData.foundIndex}!`, 'success');
+                             feedbackDiv.textContent = `Found ${gameData.target} at index ${gameData.foundIndex}!`;
+                        } else {
+                             showMessage(`${gameData.target} not found in the array.`, 'info');
+                             feedbackDiv.textContent = `${gameData.target} not found.`;
+                        }
+                         // Highlight all checked elements at the end
+                         correctSteps.forEach(step => highlights[step.index] = (step.index === gameData.foundIndex ? 'target' : 'checked'));
+
+                    }
+                } else {
+                    // Incorrect step
+                    feedbackDiv.textContent = `Incorrect. Expected to check index ${correctStep.index} (value ${correctStep.value}). Try again.`;
+                    feedbackDiv.className = 'mt-4 text-center font-semibold text-red-600';
+                    userSteps.pop(); // Remove incorrect step
+                    highlights[clickedIndex] = 'discarded'; // Show incorrect click briefly
+                    showMessage('Incorrect step.', 'error', 1500);
+                    // Re-highlight previous correct steps only
+                    userSteps.forEach(step => highlights[step.index] = 'checked');
+                }
+                 displayArray(gameData.array, highlights); // Update display
+
+            } else if (currentAlgorithm === 'binary') {
+                // --- Binary Search Click Logic ---
+                const correctStep = correctSteps[currentStep];
+                 if (!correctStep || correctStep.type !== 'check') { // Ensure we are expecting a check
+                     console.error("Invalid state: Expecting a 'check' step in Binary Search.", currentStep, correctSteps);
+                     return;
+                 }
+
+                 const highlights = {};
+                 const pointers = { lo: gameData.lo, hi: gameData.hi };
+                 // Highlight previously checked mids correctly
+                 userSteps.forEach(stepIdx => highlights[stepIdx] = 'checked');
+                 // Highlight discarded regions based on correct steps *before* this check
+                 for(let i = 0; i < currentStep; i++){
+                     if(correctSteps[i].type === 'discard'){
+                        const discardStep = correctSteps[i];
+                        // Correct logic: Highlight from lo to mid-1 (if discarding left) or mid+1 to hi (if discarding right)
+                        const checkStepBeforeDiscard = correctSteps[i-1]; // The check that led to this discard
+                        if (!checkStepBeforeDiscard || checkStepBeforeDiscard.type !== 'check') continue; // Safety check
+                        const midChecked = checkStepBeforeDiscard.index;
+
+                        if (discardStep.range === 'left') { // Target was > mid, discarded left (indices from discardStep.lo up to midChecked)
+                             for(let j = discardStep.lo; j <= midChecked; j++) highlights[j] = 'discarded';
+                         } else { // Target was < mid, discarded right (indices from midChecked up to discardStep.hi)
+                            for(let j = midChecked; j <= discardStep.hi; j++) highlights[j] = 'discarded';
+                         }
+                     }
+                 }
+
+
+                if (clickedIndex === correctStep.index) {
+                    // Correct middle element clicked
+                    feedbackDiv.textContent = `Correct! Checked middle index ${clickedIndex} (value ${clickedValue}).`;
+                    feedbackDiv.className = 'mt-4 text-center font-semibold text-green-600';
+                    userSteps.push(clickedIndex); // Record the correctly checked index
+                    highlights[clickedIndex] = 'checked'; // Highlight current correct check
+
+                    if (clickedValue === gameData.target) {
+                        // Target found
+                        gameOver = true;
+                        disableControls();
+                        highlights[clickedIndex] = 'target';
+                        showMessage(`Found ${gameData.target} at index ${gameData.foundIndex}!`, 'success');
+                        feedbackDiv.textContent = `Found ${gameData.target} at index ${gameData.foundIndex}!`;
+                    } else {
+                        // Target not found yet, proceed to discard step
+                        currentStep++; // Move to the discard step in correctSteps
+                        if (currentStep >= correctSteps.length) { // Should have found or run out of steps
+                            gameOver = true;
+                            disableControls();
+                            showMessage(`${gameData.target} not found in the array.`, 'info');
+                            feedbackDiv.textContent = `${gameData.target} not found.`;
+                             // Mark final range as discarded
+                             for(let j = gameData.lo; j <= gameData.hi; j++) highlights[j] = 'discarded';
+
+                        } else {
+                            const discardStep = correctSteps[currentStep];
+                             if (discardStep.type !== 'discard') {
+                                console.error("Invalid state: Expecting a 'discard' step.", currentStep, correctSteps);
+                                gameOver = true; // Prevent further steps
+                                disableControls();
+                                return;
+                            }
+
+                            // Update game state (lo/hi) based on the comparison that *led* to this discard
+                            if (clickedValue < gameData.target) { // Discard left half (including mid)
+                                gameData.lo = clickedIndex + 1;
+                                feedbackDiv.textContent += ` ${clickedValue} < ${gameData.target}. New range: [${gameData.lo}, ${gameData.hi}]`;
+                                for(let j = discardStep.lo; j <= clickedIndex; j++) highlights[j] = 'discarded'; // Highlight discarded part
+                            } else { // Discard right half (including mid)
+                                gameData.hi = clickedIndex - 1;
+                                feedbackDiv.textContent += ` ${clickedValue} > ${gameData.target}. New range: [${gameData.lo}, ${gameData.hi}]`;
+                                for(let j = clickedIndex; j <= discardStep.hi; j++) highlights[j] = 'discarded'; // Highlight discarded part
+                            }
+                            pointers.lo = gameData.lo;
+                            pointers.hi = gameData.hi;
+                            currentStep++; // Move past discard step to the next check step
+
+                            // Check if search space is now empty
+                            if (gameData.lo > gameData.hi) {
+                                gameOver = true;
+                                disableControls();
+                                showMessage(`${gameData.target} not found in the array.`, 'info');
+                                feedbackDiv.textContent = `${gameData.target} not found.`;
+                                // No highlights needed as array state reflects the end
+                            }
+                        }
+                    }
+
+                } else {
+                    // Incorrect middle element clicked
+                    feedbackDiv.textContent = `Incorrect. The middle element of range [${gameData.lo}, ${gameData.hi}] is at index ${correctStep.index}. Try again.`;
+                    feedbackDiv.className = 'mt-4 text-center font-semibold text-red-600';
+                    highlights[clickedIndex] = 'discarded'; // Show incorrect click briefly
+                    showMessage('Incorrect step.', 'error', 1500);
+                }
+                 // Update display with current highlights and pointers
+                 displayArray(gameData.array, highlights, pointers);
+            }
+        }
+
+
+         submitButton.addEventListener('click', () => {
+             if (gameOver || !currentAlgorithm.startsWith('hash')) return;
+
+             const inputElement = document.getElementById('hash-index-input');
+             if (!inputElement) return; // Should exist in hashing mode
+             const userIndex = parseInt(inputElement.value);
+
+             if (isNaN(userIndex) || userIndex < 0 || userIndex >= hashSize) {
+                 showMessage(`Please enter a valid index between 0 and ${hashSize - 1}.`, 'error');
+                 return;
+             }
+
+             const correctStep = correctSteps[currentStep];
+             if (!correctStep) {
+                 console.error("Hashing game ended unexpectedly or state error.");
+                 return;
+             }
+             const currentValue = correctStep.value;
+
+             // Prepare highlights for probe sequence visualization
+             const highlights = {};
+             correctStep.probeSequence.forEach((idx, i, arr) => {
+                 if (i === 0) {
+                     highlights[idx] = 'initial'; // First probe is the initial hash
+                 } else if (i < arr.length -1 || userIndex !== correctStep.finalIndex) { // Highlight intermediate probes, or all if incorrect
+                     highlights[idx] = 'probe';
+                 }
+                 // Final location highlight is handled below based on correctness
+             });
+
+
+             if (userIndex === correctStep.finalIndex) {
+                 // Correct index submitted
+                 feedbackDiv.textContent = `Correct! Value ${currentValue} inserted at index ${userIndex}.`;
+                 feedbackDiv.className = 'mt-4 text-center font-semibold text-green-600';
+                 showMessage('Correct!', 'success', 1500);
+
+                 // --- Update the actual game state table ---
+                 const tableToUpdate = gameData.table;
+                 if (gameData.probing === null) { // Separate Chaining
+                      // Avoid adding duplicates if already present (simple check)
+                      if (!tableToUpdate[userIndex].includes(currentValue)) {
+                          tableToUpdate[userIndex].unshift(currentValue);
+                      }
+                 } else { // Open Addressing
+                     tableToUpdate[userIndex] = currentValue;
+                 }
+                 // --- End Update ---
+
+                 highlights[userIndex] = 'final'; // Highlight the final correct slot green
+                 // Display the updated table with the final highlight
+                 displayHashTable(tableToUpdate, highlights, { type: 'insert', value: currentValue, finalIndex: userIndex });
+
+
+                 currentStep++; // Move to the next value to insert
+                 if (currentStep >= correctSteps.length) {
+                     // All values inserted
+                     gameOver = true;
+                     disableControls();
+                     instructionsDiv.textContent = 'All values inserted!';
+                     userInteractionDiv.innerHTML = ''; // Clear input area
+                     showMessage('Hashing complete!', 'success');
+                 } else {
+                     // Prepare for next insertion
+                     const nextValue = correctSteps[currentStep].value;
+                     // Update instruction text dynamically
+                     const algoName = currentAlgorithm.replace('hash-', 'Hashing (').replace(/-/g,' ') + ')'; // Format name nicely, replace all hyphens
+                     instructionsDiv.textContent = `${algoName}: Insert ${nextValue}. Calculate hash, then enter the final index.`;
+                     inputElement.value = ''; // Clear input for next step
+                     inputElement.focus(); // Focus input for convenience
+                     // Show the table state *before* the next insertion for clarity (without probe highlights)
+                     // Use setTimeout to allow the green highlight to show briefly before resetting view
+                     setTimeout(() => {
+                         // Check if game is still running before updating display
+                         if (!gameOver && currentStep < correctSteps.length) {
+                            displayHashTable(gameData.table, {}, null); // Display current table state without highlights
+                         }
+                     }, 1000); // Show green highlight for 1 second
+                 }
+
+             } else {
+                 // Incorrect index submitted
+                 feedbackDiv.textContent = `Incorrect. Value ${currentValue} should land at index ${correctStep.finalIndex}. Initial hash: ${correctStep.initialHash}. Probed: ${correctStep.probeSequence.join(' -> ')}. Try again.`;
+                 feedbackDiv.className = 'mt-4 text-center font-semibold text-red-600';
+                 showMessage('Incorrect index. Check hash/probe logic.', 'error');
+                 highlights[userIndex] = 'occupied'; // Highlight the incorrect guess in red
+                 // Show the probe path and the incorrect guess
+                 displayHashTable(gameData.table, highlights); // Show highlights without inserting
+             }
+         });
+
+
+        hintButton.addEventListener('click', () => {
+            if (gameOver) return;
+            hintUsed = true;
+            let hintText = '';
+
+            if (currentAlgorithm === 'linear') {
+                const correctStep = correctSteps[currentStep];
+                 hintText = `Hint: Check the element at index ${correctStep.index}. Linear search checks elements sequentially from the start.`;
+            } else if (currentAlgorithm === 'binary') {
+                 const correctStep = correctSteps[currentStep];
+                 if (correctStep?.type === 'check') { // Add safety check for correctStep
+                    hintText = `Hint: The current search range is [${gameData.lo}, ${gameData.hi}]. Calculate the middle index: floor((${gameData.lo} + ${gameData.hi}) / 2) = ${correctStep.index}. Click on index ${correctStep.index}.`;
+                 } else {
+                     hintText = `Hint: Compare the target ${gameData.target} with the last checked value. Update the search range [lo, hi].`;
+                 }
+            } else if (currentAlgorithm.startsWith('hash')) {
+                 const correctStep = correctSteps[currentStep];
+                 if (!correctStep) return; // Safety check
+                 const value = correctStep.value;
+                 const initialHash = correctStep.initialHash;
+                 hintText = `Hint: For value ${value}, the initial hash is ${initialHash}. `;
+                 if (gameData.probing === null) { // Chaining
+                     hintText += `Insert at the head of the list at index ${initialHash}. The target index is ${correctStep.finalIndex}.`;
+                 } else { // Open Addressing
+                     hintText += `Check index ${initialHash}. If occupied, probe using the displayed formula. The correct final index is ${correctStep.finalIndex}. Probe sequence: ${correctStep.probeSequence.join(' -> ')}`;
+                 }
+            }
+
+            feedbackDiv.textContent = hintText;
+            feedbackDiv.className = 'mt-4 text-center font-semibold text-yellow-700';
+             showMessage('Hint provided.', 'info', 4000); // Longer duration for hint
+        });
+
+        answerButton.addEventListener('click', () => {
+            if (gameOver) return;
+
+            feedbackDiv.textContent = 'Showing the answer for this step...';
+            feedbackDiv.className = 'mt-4 text-center font-semibold text-blue-600';
+
+             if (currentAlgorithm === 'linear' || currentAlgorithm === 'binary') {
+                 // Simulate the correct click for array-based algorithms
+                 const correctStep = correctSteps[currentStep];
+                 if (!correctStep) return; // Safety check
+
+                 // Action only applies to 'check' steps for clicking
+                 if (correctStep.type !== 'check') {
+                     showMessage('Cannot automatically perform discard step. Use Hint or proceed.', 'info');
+                     return; // Don't proceed for non-clickable steps
+                 }
+
+                 // Find the element corresponding to the correct action index
+                 const actionIndex = correctStep.index;
+                 const elementToClick = visualizationDiv.querySelector(`.data-element[data-index='${actionIndex}']`);
+
+                 if (elementToClick) {
+                    // Temporarily disable manual clicks on this specific element
+                    const originalEventListener = handleElementClick; // Store reference
+                    elementToClick.removeEventListener('click', originalEventListener);
+
+                    handleElementClick({ target: elementToClick }); // Simulate the event
+
+                    // Re-enable click handler after a short delay if game continues
+                    if (!gameOver) {
+                        // Need to find the potentially recreated element
+                        setTimeout(() => {
+                            const currentElement = visualizationDiv.querySelector(`.data-element[data-index='${actionIndex}']`);
+                            if (currentElement) {
+                                currentElement.addEventListener('click', originalEventListener); // Re-add listener
+                            }
+                        }, 150); // Slightly longer delay
+                    }
+                 } else {
+                      console.error("Could not find element to click for answer step:", actionIndex);
+                 }
+            } else if (currentAlgorithm.startsWith('hash')) {
+                 // Fill the input with the correct answer and simulate submit
+                 const correctStep = correctSteps[currentStep];
+                 if (!correctStep) return; // Safety check
+                 const inputElement = document.getElementById('hash-index-input');
+                 if (inputElement) {
+                    inputElement.value = correctStep.finalIndex;
+                    submitButton.click(); // Simulate clicking the submit button
+                 }
+            }
+             showMessage('Answer step shown.', 'info', 1500);
+        });
+
+
+        // --- Initial Setup ---
+        disableControls(); // Disable controls until a game starts
+        difficultySelect.disabled = true; // Disable difficulty initially
+
+    </script>
+
+</body>
+</html>
